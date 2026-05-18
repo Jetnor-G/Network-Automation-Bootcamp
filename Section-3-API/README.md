@@ -29,12 +29,68 @@ Query and configure network infrastructure via REST APIs. This section uses **Ne
 
 ## Lab Scripts
 
-| Script | What It Does |
+| Script | Method | What It Does |
 |--------|-------------|
-| `01_netbox_get_devices.py` | Query all active devices from local NetBox |
-| `02_restconf_push_config.py` | Push interface config to Router-1 via RESTCONF |
-| `03_bgpview_lookup.py` | Look up ASN / prefix info using BGPView public API |
-| `04_devnet_sandbox.py` | Query interfaces on Cisco DevNet Always-On IOS-XE |
+| `01_netbox_get_devices.py` | REST | Query all active devices from local NetBox |
+| `02_restconf_push_config.py` | RESTCONF | Push interface config to Router-1 |
+| `03_bgpview_lookup.py` | REST (public) | BGPView — ASN / prefix lookups |
+| `04_devnet_sandbox.py` | RESTCONF | Cisco DevNet Always-On IOS-XE sandbox |
+| `05_push_baseline_ssh.py` | SSH (Netmiko) | Push banner, logging, domain, DNS, NTP via CLI |
+| `06_push_baseline_restconf.py` | RESTCONF | Push same baseline via YANG/RESTCONF |
+
+---
+
+## Exercise 5 — SSH: Push Baseline Config with Netmiko
+
+```bash
+python3 scripts/05_push_baseline_ssh.py
+```
+
+Connects to all three lab devices over SSH using **Netmiko** and pushes:
+- `ip domain-name` + `ip name-server` (Domain & DNS)
+- `ntp server` (NTP)
+- `logging host` + `logging buffered` + `service timestamps` (Logging)
+- `banner motd` (Banner)
+
+The script prints the full command list, asks for confirmation, then applies and verifies.
+
+**Key concepts:** Netmiko `ConnectHandler`, `send_config_set()`, `save_config()`, error handling.
+
+---
+
+## Exercise 6 — RESTCONF: Push Baseline Config with Python
+
+```bash
+python3 scripts/06_push_baseline_restconf.py
+```
+
+Pushes the exact same baseline using **RESTCONF PATCH/PUT** requests with IOS-XE YANG models:
+
+| Config Block | YANG Path |
+|---|---|
+| Domain | `Cisco-IOS-XE-native:native/ip/domain` |
+| DNS | `Cisco-IOS-XE-native:native/ip/name-server` |
+| NTP | `Cisco-IOS-XE-native:native/ntp` |
+| Logging | `Cisco-IOS-XE-native:native/logging` |
+| Timestamps | `Cisco-IOS-XE-native:native/service/timestamps` |
+| Banner MOTD | `Cisco-IOS-XE-native:native/banner` |
+
+After pushing, the script runs a GET on each path and prints the confirmation.
+
+**Key concepts:** YANG data models, PATCH vs PUT, structured JSON payloads, read-back verification.
+
+---
+
+## SSH vs RESTCONF — Side-by-Side Comparison
+
+| Aspect | SSH / Netmiko (Script 05) | RESTCONF (Script 06) |
+|--------|--------------------------|---------------------|
+| Protocol | SSH (port 22) | HTTPS (port 443) |
+| Data format | CLI text commands | Structured JSON |
+| Works on | Any IOS device | IOS-XE ≥ 16.6 only |
+| Error detection | Parse text output | HTTP status codes |
+| Idempotent | No (re-applies always) | Yes (PUT/PATCH) |
+| Best for | Legacy devices | Modern/API-ready devices |
 
 ---
 
@@ -154,4 +210,7 @@ curl -X POST https://httpbin.org/post -H "Content-Type: application/json" \
 - [ ] Script 2 applies interface config via RESTCONF PUT
 - [ ] Script 3 looks up at least one real ASN and parses the JSON
 - [ ] Script 4 queries the DevNet sandbox interfaces
+- [ ] Script 5 (SSH) pushes banner, logging, domain, DNS, NTP to all devices
+- [ ] Script 6 (RESTCONF) pushes same baseline and reads back each YANG path to verify
+- [ ] Compare outputs of scripts 5 and 6 — same result, different protocol
 - [ ] All scripts have try/except for connection and HTTP errors

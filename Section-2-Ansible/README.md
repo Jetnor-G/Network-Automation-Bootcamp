@@ -91,6 +91,43 @@ interface {{ iface.name }}
 
 ---
 
+## Playbook 4 — Baseline Config (Banner, Logging, Domain, DNS, NTP)
+
+```bash
+# Dry run first
+ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml --check --diff
+
+# Apply to all devices
+ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml
+```
+
+Variables are centralised in `inventory/group_vars/all.yml` — edit once, applies everywhere:
+
+```yaml
+domain_name:     lab.example.com
+dns_servers:     [8.8.8.8, 8.8.4.4]
+ntp_servers:     [216.239.35.0, 216.239.35.4]
+syslog_server:   10.0.0.50
+logging_buffer_size: 16384
+logging_severity: informational
+banner_motd: |
+  *** AUTHORIZED ACCESS ONLY ***
+```
+
+The `templates/baseline.j2` Jinja2 template renders the full config block from those variables.
+
+### Modules Used in Playbook 4
+
+| Module | Config Block |
+|--------|-------------|
+| `cisco.ios.ios_system` | Domain name, DNS name servers |
+| `cisco.ios.ios_ntp_global` | NTP servers + prefer flag |
+| `cisco.ios.ios_logging_global` | Syslog host, buffer, trap level |
+| `cisco.ios.ios_config` | Timestamps (`service timestamps`) |
+| `cisco.ios.ios_banner` | Banner MOTD text |
+
+---
+
 ## Completion Criteria
 
 - [ ] Inventory created with routers and switches groups
@@ -98,3 +135,5 @@ interface {{ iface.name }}
 - [ ] `push-config` playbook applies a change via Jinja2 template
 - [ ] `compliance-check` playbook generates a report
 - [ ] `--check --diff` used before every real push
+- [ ] `baseline-config` playbook pushes banner, logging, domain, DNS, NTP to all devices
+- [ ] Verify with `show ntp associations` and `show logging` after apply
