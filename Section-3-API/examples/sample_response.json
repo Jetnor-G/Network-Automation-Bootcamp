@@ -1,0 +1,34 @@
+{
+  "ietf-interfaces:interfaces": {
+    "interface": [
+      {
+        "name": "GigabitEthernet0/0",
+        "description": "WAN_UPLINK",
+        "type": "iana-if-type:ethernetCsmacd",
+        "enabled": true,
+        "ietf-ip:ipv4": {
+          "address": [
+            {
+              "ip": "203.0.113.1",
+              "prefix-length": 30
+            }
+          ]
+        }
+      },
+      {
+        "name": "GigabitEthernet0/1",
+        "description": "LAN_SEGMENT",
+        "type": "iana-if-type:ethernetCsmacd",
+        "enabled": true,
+        "ietf-ip:ipv4": {
+          "address": [
+            {
+              "ip": "10.0.0.1",
+              "prefix-length": 24
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

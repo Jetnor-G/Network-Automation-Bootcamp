@@ -1,0 +1,29 @@
+---
+# Playbook 2: Push interface configuration using Jinja2 templates
+# Dry run : ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml --check --diff
+# Apply   : ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml
+
+- name: Push Interface Configuration
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: Render and push interface config from template
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/interface.j2"
+        save_when: modified
+      notify: save running config
+
+    - name: Verify interfaces are up
+      cisco.ios.ios_command:
+        commands: show ip interface brief
+      register: iface_status
+
+    - name: Print interface status
+      debug:
+        var: iface_status.stdout_lines
+
+  handlers:
+    - name: save running config
+      cisco.ios.ios_command:
+        commands: write memory

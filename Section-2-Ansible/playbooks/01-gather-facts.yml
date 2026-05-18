@@ -1,0 +1,30 @@
+---
+# Playbook 1: Gather facts from all network devices
+# Run: ansible-playbook -i inventory/hosts.ini playbooks/01-gather-facts.yml
+
+- name: Gather Network Device Facts
+  hosts: network
+  gather_facts: false
+
+  tasks:
+    - name: Gather IOS facts
+      cisco.ios.ios_facts:
+        gather_subset:
+          - hardware
+          - interfaces
+          - config
+      register: device_facts
+
+    - name: Display hostname and version
+      debug:
+        msg:
+          - "Hostname  : {{ ansible_net_hostname }}"
+          - "OS Version: {{ ansible_net_version }}"
+          - "Serial    : {{ ansible_net_serialnum }}"
+          - "Model     : {{ ansible_net_model }}"
+
+    - name: Save facts to file
+      copy:
+        content: "{{ device_facts | to_nice_yaml }}"
+        dest: "./facts/{{ inventory_hostname }}_facts.yml"
+      delegate_to: localhost

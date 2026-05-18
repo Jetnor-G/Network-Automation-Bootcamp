@@ -1,0 +1,53 @@
+---
+# Playbook 3: Compliance check — verify security and standards baseline
+# Run: ansible-playbook -i inventory/hosts.ini playbooks/03-compliance-check.yml
+
+- name: Network Compliance Check
+  hosts: network
+  gather_facts: false
+
+  vars:
+    report_dir: "./reports"
+    compliance_results: []
+
+  tasks:
+    - name: Check SSH version 2
+      cisco.ios.ios_command:
+        commands: show ip ssh
+      register: ssh_output
+
+    - name: Assert SSH v2 is enabled
+      assert:
+        that:
+          - "'SSH Enabled - version 2.0' in ssh_output.stdout[0]"
+        success_msg: "[PASS] SSH v2 enabled on {{ inventory_hostname }}"
+        fail_msg:    "[FAIL] SSH v2 NOT enabled on {{ inventory_hostname }}"
+
+    - name: Check NTP associations
+      cisco.ios.ios_command:
+        commands: show ntp associations
+      register: ntp_output
+
+    - name: Assert NTP is configured
+      assert:
+        that:
+          - "ntp_output.stdout[0] | length > 0"
+        success_msg: "[PASS] NTP configured on {{ inventory_hostname }}"
+        fail_msg:    "[FAIL] NTP NOT configured on {{ inventory_hostname }}"
+
+    - name: Check ip routing (routers only)
+      cisco.ios.ios_command:
+        commands: show ip route summary
+      register: routing_output
+      when: inventory_hostname in groups['routers']
+
+    - name: Save compliance report
+      copy:
+        content: |
+          Compliance Report — {{ inventory_hostname }}
+          Generated: {{ ansible_date_time.iso8601 | default('N/A') }}
+          ============================================
+          SSH v2  : {{ 'PASS' if 'version 2.0' in ssh_output.stdout[0] else 'FAIL' }}
+          NTP     : {{ 'PASS' if ntp_output.stdout[0] | length > 0 else 'FAIL' }}
+        dest: "{{ report_dir }}/{{ inventory_hostname }}_compliance.txt"
+      delegate_to: localhost
