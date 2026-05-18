@@ -2,99 +2,41 @@
 
 ## Objective
 
-Use **Ansible** to automate configuration management across multiple network devices simultaneously. This section covers inventory, playbooks, Jinja2 templates, and compliance checking.
+Use **Ansible** to configure routers and switches at scale using playbooks and Jinja2 templates. This section uses the shared lab devices (Router-1, Router-2, Switch-1) and NetBox as the source of truth for inventory.
 
 ---
 
-## Why Ansible for Network Automation?
+## Lab Devices
 
-| Manual CLI | Ansible Playbook |
-|------------|-----------------|
-| Log into each device one by one | Push to 100 devices in parallel |
-| Easy to miss a device or make a typo | Idempotent — same result every run |
-| No record of what changed | YAML playbooks are human-readable docs |
-| Hard to enforce standards | Compliance checks run automatically |
-
----
-
-## Lab Architecture
-
-```
-Control Node (Linux)
-│
-├── inventory/
-│   ├── hosts.ini          ← Device list + groups
-│   └── group_vars/        ← Per-group variables
-│
-├── playbooks/
-│   ├── 01-gather-facts.yml
-│   ├── 02-push-config.yml
-│   └── 03-compliance-check.yml
-│
-└── templates/
-    └── interface.j2       ← Jinja2 config template
-```
+| Host | IP | OS | Role |
+|------|----|----|------|
+| router1 | 10.0.1.1 | IOS-XE | Core router / OSPF |
+| router2 | 10.0.1.2 | NX-OS | Secondary router |
+| switch1 | 10.0.1.10 | IOS | Access switch / VLANs |
 
 ---
 
-## Inventory Setup
-
-### `inventory/hosts.ini`
-
-```ini
-[routers]
-router1 ansible_host=10.0.0.1
-router2 ansible_host=10.0.0.2
-
-[switches]
-switch1 ansible_host=10.0.0.10
-
-[firewalls]
-fw1     ansible_host=10.0.0.254
-
-[network:children]
-routers
-switches
-firewalls
-
-[network:vars]
-ansible_user=admin
-ansible_password=Lab@1234
-ansible_network_os=ios
-ansible_connection=network_cli
-ansible_become=yes
-ansible_become_method=enable
-```
-
----
-
-## Playbook 1 — Gather Facts from All Devices
+## Playbook 1 — Gather Facts
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/01-gather-facts.yml
 ```
 
-### What it does:
-- Connects to all network devices
-- Collects OS version, serial number, interface list
-- Saves output to `./facts/` directory
+Collects OS version, serial number, and interface list from all devices. Saves per-device YAML files to `./facts/`.
 
 ---
 
 ## Playbook 2 — Push Interface Configuration
 
 ```bash
-# Dry run first (check mode)
+# Preview changes first (mandatory step in the bootcamp)
 ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml --check --diff
 
-# Apply for real
+# Apply after review
 ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml
 ```
 
-### What it does:
-- Renders the `interface.j2` Jinja2 template per device
-- Pushes interface descriptions, IP addresses, and shutdown state
-- Verifies the config was applied
+Renders `templates/interface.j2` per device using variables from `group_vars/`, then pushes and verifies.
 
 ---
 
@@ -104,30 +46,14 @@ ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml
 ansible-playbook -i inventory/hosts.ini playbooks/03-compliance-check.yml
 ```
 
-### What it does:
-- Verifies SSH v2 is enabled on all devices
-- Ensures NTP server is configured
-- Checks that `ip routing` is active on routers
-- Generates a compliance report in `./reports/`
+Verifies SSH v2, NTP, and IP routing are correctly configured. Generates a report in `./reports/`.
 
 ---
 
-## Key Ansible Modules for Network Automation
+## Jinja2 Template
 
-| Module | Purpose | Example |
-|--------|---------|---------|
-| `cisco.ios.ios_command` | Run show commands | `show ip interface brief` |
-| `cisco.ios.ios_config` | Push config lines | `interface Gi0/1` |
-| `cisco.ios.ios_facts` | Gather device facts | OS, interfaces, neighbours |
-| `ansible.netcommon.cli_command` | Vendor-neutral CLI | Multi-OS commands |
-| `ansible.netcommon.netconf_config` | NETCONF push | XML config payloads |
-| `community.general.napalm_get_facts` | NAPALM integration | Normalised facts |
+`templates/interface.j2` renders per-device interface config from YAML variables:
 
----
-
-## Jinja2 Template Example
-
-`templates/interface.j2`:
 ```jinja2
 {% for iface in interfaces %}
 interface {{ iface.name }}
@@ -135,37 +61,25 @@ interface {{ iface.name }}
  {% if iface.ip is defined %}
  ip address {{ iface.ip }} {{ iface.mask }}
  {% endif %}
- {% if iface.shutdown %}
- shutdown
- {% else %}
- no shutdown
- {% endif %}
+ {% if iface.shutdown %}shutdown{% else %}no shutdown{% endif %}
 !
 {% endfor %}
 ```
 
 ---
 
-## Variable Files
+## Key Ansible Modules
 
-`inventory/group_vars/routers.yml`:
-```yaml
-interfaces:
-  - name: GigabitEthernet0/0
-    description: WAN_UPLINK
-    ip: 203.0.113.1
-    mask: 255.255.255.252
-    shutdown: false
-  - name: GigabitEthernet0/1
-    description: LAN_SEGMENT
-    ip: 10.0.0.1
-    mask: 255.255.255.0
-    shutdown: false
-```
+| Module | Purpose |
+|--------|---------|
+| `cisco.ios.ios_facts` | Gather device facts |
+| `cisco.ios.ios_config` | Push configuration lines |
+| `cisco.ios.ios_command` | Run show commands |
+| `ansible.netcommon.cli_command` | Vendor-neutral CLI |
 
 ---
 
-## Ansible Cheat Sheet
+## Cheat Sheet
 
 | Command | Purpose |
 |---------|---------|
@@ -173,16 +87,14 @@ interfaces:
 | `ansible-playbook pb.yml --check` | Dry run |
 | `ansible-playbook pb.yml --diff` | Show config diff |
 | `ansible-playbook pb.yml -l router1` | Limit to one host |
-| `ansible-playbook pb.yml --tags ntp` | Run tagged tasks only |
 | `ansible-vault encrypt vars.yml` | Encrypt secrets |
-| `ansible-doc ios_config` | Module documentation |
 
 ---
 
 ## Completion Criteria
 
-- [ ] Inventory file created with at least 2 device groups
-- [ ] `gather-facts` playbook runs successfully
-- [ ] `push-config` playbook applies a change via template
+- [ ] Inventory created with routers and switches groups
+- [ ] `gather-facts` playbook runs successfully on all devices
+- [ ] `push-config` playbook applies a change via Jinja2 template
 - [ ] `compliance-check` playbook generates a report
-- [ ] At least one playbook uses `--check` and `--diff` before applying
+- [ ] `--check --diff` used before every real push
