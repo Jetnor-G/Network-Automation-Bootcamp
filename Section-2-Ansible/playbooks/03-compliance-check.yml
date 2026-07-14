@@ -69,6 +69,13 @@
       register: routing_output
       when: is_router
 
+    - name: Ensure local reports directory exists
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+      delegate_to: localhost
+      run_once: true
+
     - name: Save compliance report
       copy:
         content: |

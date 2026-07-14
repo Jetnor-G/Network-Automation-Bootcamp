@@ -33,6 +33,13 @@
           - "Serial    : {{ ansible_net_serialnum }}"
           - "Model     : {{ ansible_net_model }}"
 
+    - name: Ensure local facts directory exists
+      file:
+        path: "./facts"
+        state: directory
+      delegate_to: localhost
+      run_once: true
+
     - name: Save facts to file
       copy:
         content: "{{ (nxos_facts_out if inventory_hostname in groups['routers'] else ios_facts_out) | to_nice_yaml }}"
