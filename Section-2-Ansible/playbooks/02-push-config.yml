@@ -1,5 +1,6 @@
 ---
 # Playbook 2: Push interface configuration using Jinja2 templates
+# Targets: Router-1 and Router-2 (virtual Nexus / NX-OS)
 # Dry run : ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml --check --diff
 # Apply   : ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml
 
@@ -9,13 +10,13 @@
 
   tasks:
     - name: Render and push interface config from template
-      cisco.ios.ios_config:
+      cisco.nxos.nxos_config:
         src: "{{ playbook_dir }}/../templates/interface.j2"
         save_when: modified
       notify: save running config
 
     - name: Verify interfaces are up
-      cisco.ios.ios_command:
+      cisco.nxos.nxos_command:
         commands: show ip interface brief
       register: iface_status
 
@@ -25,5 +26,6 @@
 
   handlers:
     - name: save running config
-      cisco.ios.ios_command:
-        commands: write memory
+      cisco.nxos.nxos_command:
+        # NX-OS has no "write memory" — the save command is copy run/start
+        commands: copy running-config startup-config

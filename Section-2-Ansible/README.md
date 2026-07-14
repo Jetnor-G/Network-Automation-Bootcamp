@@ -10,9 +10,13 @@ Use **Ansible** to configure routers and switches at scale using playbooks and J
 
 | Host | IP | OS | Role |
 |------|----|----|------|
-| router1 | 10.106.106.61 | IOS-XE | Core router / OSPF |
-| router2 | 10.106.106.62 | NX-OS | Secondary router |
-| switch1 | 10.106.106.63 | IOS | Access switch / VLANs |
+| router1 | 10.106.106.61 | NX-OS (virtual Nexus) | Core router / OSPF |
+| router2 | 10.106.106.62 | NX-OS (virtual Nexus) | Secondary router |
+| switch1 | 10.106.106.63 | IOS (virtual) | Access switch / VLANs |
+
+Routers use `cisco.nxos.*` modules and log in straight to full EXEC (no `enable`/become needed).
+Switch-1 uses `cisco.ios.*` modules and does need `enable` — see the per-group vars in
+`inventory/hosts.ini`.
 
 ---
 
@@ -72,9 +76,9 @@ interface {{ iface.name }}
 
 | Module | Purpose |
 |--------|---------|
-| `cisco.ios.ios_facts` | Gather device facts |
-| `cisco.ios.ios_config` | Push configuration lines |
-| `cisco.ios.ios_command` | Run show commands |
+| `cisco.ios.ios_facts` / `cisco.nxos.nxos_facts` | Gather device facts (IOS / NX-OS) |
+| `cisco.ios.ios_config` / `cisco.nxos.nxos_config` | Push configuration lines |
+| `cisco.ios.ios_command` / `cisco.nxos.nxos_command` | Run show commands |
 | `ansible.netcommon.cli_command` | Vendor-neutral CLI |
 
 ---
@@ -118,13 +122,18 @@ The `templates/baseline.j2` Jinja2 template renders the full config block from t
 
 ### Modules Used in Playbook 4
 
-| Module | Config Block |
-|--------|-------------|
-| `cisco.ios.ios_system` | Domain name, DNS name servers |
-| `cisco.ios.ios_ntp_global` | NTP servers + prefer flag |
-| `cisco.ios.ios_logging_global` | Syslog host, buffer, trap level |
-| `cisco.ios.ios_config` | Timestamps (`service timestamps`) |
-| `cisco.ios.ios_banner` | Banner MOTD text |
+Playbook 4 runs a separate task per platform for each config block, since the routers (NX-OS)
+and switch (IOS) use different resource modules — and NX-OS has no `service timestamps` or
+`write memory` equivalent.
+
+| Config Block | IOS (Switch-1) | NX-OS (Router-1/2) |
+|--------------|-----------------|---------------------|
+| Domain / DNS | `cisco.ios.ios_system` | `cisco.nxos.nxos_system` |
+| NTP | `cisco.ios.ios_ntp_global` | `cisco.nxos.nxos_ntp_global` |
+| Logging | `cisco.ios.ios_logging_global` | `cisco.nxos.nxos_logging_global` |
+| Timestamps | `cisco.ios.ios_config` (`service timestamps`) | n/a — set via `timestamp:` key on `nxos_logging_global` |
+| Banner | `cisco.ios.ios_banner` | `cisco.nxos.nxos_banner` |
+| Save config | `cisco.ios.ios_command` (`write memory`) | `cisco.nxos.nxos_command` (`copy running-config startup-config`) |
 
 ---
 

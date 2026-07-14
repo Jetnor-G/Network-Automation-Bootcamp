@@ -13,7 +13,10 @@ Query and configure network infrastructure via REST APIs. This section uses **Ne
 | Service | URL | Auth | What You Do |
 |---------|-----|------|-------------|
 | NetBox | `http://10.100.100.25:8000/api/` | Token (given at start) | Query devices, prefixes, add records |
-| Router-1 (RESTCONF) | `https://10.106.106.61/restconf/` | Basic auth | Push/pull interface config |
+
+> Router-1 and Router-2 are virtual Nexus (NX-OS) and Switch-1 is virtual IOS — none of the lab
+> devices support the Cisco-IOS-XE-native RESTCONF YANG models used in scripts 02 and 06. Use the
+> Cisco DevNet Always-On IOS-XE sandbox below for the RESTCONF exercises instead.
 
 ### Free Public APIs (no setup, no account)
 
@@ -49,7 +52,9 @@ python3 scripts/05_push_baseline_ssh.py
 Connects to all three lab devices over SSH using **Netmiko** and pushes:
 - `ip domain-name` + `ip name-server` (Domain & DNS)
 - `ntp server` (NTP)
-- `logging host` + `logging buffered` + `service timestamps` (Logging)
+- Logging: `logging host` + `logging buffered` + `service timestamps` on Switch-1 (IOS);
+  `logging server` + `logging logfile` + `logging timestamp` on Router-1/2 (NX-OS — no
+  `service timestamps` or `write memory` on this platform)
 - `banner motd` (Banner)
 
 The script prints the full command list, asks for confirmation, then applies and verifies.
@@ -112,7 +117,9 @@ Fetches all active devices from NetBox and prints a table. Then extend the scrip
 python3 scripts/02_restconf_push_config.py
 ```
 
-Uses RESTCONF (RFC 8040) to configure `GigabitEthernet0/1` on Router-1 with a description and IP address.
+Uses RESTCONF (RFC 8040) to configure an interface with a description and IP address. `DEVICE_IP`
+is a placeholder — point it at the DevNet IOS-XE sandbox (or another IOS-XE device with RESTCONF
+enabled), since none of the lab's own devices (NX-OS routers, IOS switch) support it.
 
 **Key concepts:** YANG data models, HTTP PUT, `application/yang-data+json`.
 
@@ -211,6 +218,6 @@ curl -X POST https://httpbin.org/post -H "Content-Type: application/json" \
 - [ ] Script 3 looks up at least one real ASN and parses the JSON
 - [ ] Script 4 queries the DevNet sandbox interfaces
 - [ ] Script 5 (SSH) pushes banner, logging, domain, DNS, NTP to all devices
-- [ ] Script 6 (RESTCONF) pushes same baseline and reads back each YANG path to verify
-- [ ] Compare outputs of scripts 5 and 6 — same result, different protocol
+- [ ] Script 6 (RESTCONF) pushes the same baseline to an IOS-XE target (e.g. the DevNet sandbox) and reads back each YANG path to verify
+- [ ] Compare script 5 (SSH/CLI, all three lab devices) and script 6 (RESTCONF, IOS-XE only) — same baseline intent, different protocol and platform reach
 - [ ] All scripts have try/except for connection and HTTP errors

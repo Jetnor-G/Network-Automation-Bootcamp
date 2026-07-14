@@ -53,7 +53,7 @@ A hands-on lab for **10–12 students** learning network automation with **Git**
 ┌───────┴────────┐  ┌───────┴────────┐  ┌──────┴──────────┐
 │  ROUTER-1      │  │  ROUTER-2      │  │  SWITCH-1       │
 │  10.106.106.61 │  │  10.106.106.62 │  │  10.106.106.63  │
-│  IOS-XE        │  │  NX-OS         │  │  IOS            │
+│  NX-OS         │  │  NX-OS         │  │  IOS            │
 │  OSPF Area0    │  │                │  │  VLAN 10/20     │
 └────────────────┘  └────────────────┘  └─────────────────┘
 
