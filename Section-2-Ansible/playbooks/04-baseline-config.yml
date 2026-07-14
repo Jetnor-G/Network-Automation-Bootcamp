@@ -48,11 +48,12 @@
         config:
           servers:
             - server: "{{ item }}"
-              prefer: "{{ true if loop.index == 1 else false }}"
+              prefer: "{{ true if ansible_loop.index == 1 else false }}"
         state: merged
       loop: "{{ ntp_servers }}"
       loop_control:
         label: "{{ item }}"
+        extended: true
       when: is_router
 
     - name: Configure NTP servers (IOS)
@@ -60,11 +61,12 @@
         config:
           servers:
             - server: "{{ item }}"
-              prefer: "{{ true if loop.index == 1 else false }}"
+              prefer: "{{ true if ansible_loop.index == 1 else false }}"
         state: merged
       loop: "{{ ntp_servers }}"
       loop_control:
         label: "{{ item }}"
+        extended: true
       when: not is_router
 
     # ── Logging ───────────────────────────────────────────────────────────────
