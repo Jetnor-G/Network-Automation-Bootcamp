@@ -131,9 +131,35 @@ git push origin main
 
 ---
 
+## Baseline Config: What Is Version-Controlled
+
+Each device config file tracks the full baseline. Key sections students will push (via Ansible in Section 2, via Python in Section 3) and then commit here:
+
+| Config Block | IOS Command(s) | Why It Matters |
+|---|---|---|
+| Domain | `ip domain-name lab.example.com` | Required for SSH key generation |
+| DNS | `ip name-server 8.8.8.8` | Hostname resolution |
+| NTP | `ntp server 216.239.35.0 prefer` | Accurate log timestamps |
+| Logging | `logging host 10.106.106.60` | Centralised syslog |
+| Log timestamps | `service timestamps log datetime msec localtime` | Human-readable logs |
+| Banner MOTD | `banner motd ^...^` | Legal access notice |
+
+### Workflow: Commit After Every Automated Change
+
+```bash
+# After Ansible or Python pushes the baseline config:
+cp <device-backup>.cfg configs/router1_baseline.cfg
+git add configs/router1_baseline.cfg
+git commit -m "feat: apply baseline (NTP, DNS, logging, banner) to Router-1"
+git push origin main
+```
+
+---
+
 ## Completion Criteria
 
 - [ ] Repository initialised with at least one config file
+- [ ] Baseline configs include banner, logging, domain, DNS, and NTP sections
 - [ ] At least two commits visible in `git log`
 - [ ] Successfully created and merged a feature branch
 - [ ] Demonstrated a config rollback using `git revert`

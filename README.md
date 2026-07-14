@@ -1,68 +1,106 @@
 # Network Automation Bootcamp
 
-A hands-on lab environment for learning network automation using **Git**, **Ansible**, and **REST APIs**.
+A hands-on lab for **10–12 students** learning network automation with **Git**, **Ansible**, and **REST APIs**.
 
 ---
 
 ## Lab Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     NETWORK AUTOMATION BOOTCAMP                         │
-│                                                                         │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │                    AUTOMATION CONTROL NODE                       │  │
-│   │                                                                  │  │
-│   │   ┌─────────────┐   ┌──────────────┐   ┌──────────────────┐    │  │
-│   │   │    G I T    │   │   ANSIBLE    │   │   REST API       │    │  │
-│   │   │  Repository │   │  Engine      │   │   Client         │    │  │
-│   │   │             │   │              │   │                  │    │  │
-│   │   │ • Track     │   │ • Playbooks  │   │ • HTTP Requests  │    │  │
-│   │   │   configs   │   │ • Roles      │   │ • JSON Parsing   │    │  │
-│   │   │ • Branches  │   │ • Inventory  │   │ • Auth Tokens    │    │  │
-│   │   │ • Rollback  │   │ • Templates  │   │ • Automation     │    │  │
-│   │   └──────┬──────┘   └──────┬───────┘   └────────┬─────────┘    │  │
-│   │          │                 │                     │              │  │
-│   └──────────┼─────────────────┼─────────────────────┼──────────────┘  │
-│              │                 │                     │                  │
-│              └─────────────────┼─────────────────────┘                  │
-│                                │  SSH / NETCONF / REST                  │
-│                   ─────────────┼─────────────                           │
-│                                │                                        │
-│   ┌─────────────────────────────────────────────────────────────┐       │
-│   │                     NETWORK DEVICES                         │       │
-│   │                                                             │       │
-│   │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │       │
-│   │  │ Router-1 │  │ Router-2 │  │Switch-1  │  │Firewall-1│   │       │
-│   │  │10.0.0.1  │  │10.0.0.2  │  │10.0.0.10 │  │10.0.0.254│   │       │
-│   │  │          │  │          │  │          │  │          │   │       │
-│   │  │ IOS-XE   │  │ NX-OS    │  │ IOS      │  │ ASA      │   │       │
-│   │  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │       │
-│   │                                                             │       │
-│   └─────────────────────────────────────────────────────────────┘       │
-│                                                                         │
-│   ┌─────────────────────────────────────────────────────────────┐       │
-│   │                    NETWORK SERVICES                         │       │
-│   │                                                             │       │
-│   │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐    │       │
-│   │  │   NMS / API  │   │   NETBOX     │   │   NAPALM     │    │       │
-│   │  │   Endpoint   │   │   (IPAM/DCIM)│   │   (Multi-OS) │    │       │
-│   │  │  :8080       │   │   :8000      │   │   Library    │    │       │
-│   │  └──────────────┘   └──────────────┘   └──────────────┘    │       │
-│   │                                                             │       │
-│   └─────────────────────────────────────────────────────────────┘       │
-└─────────────────────────────────────────────────────────────────────────┘
+                        INTERNET
+                            │
+              ──────────────┼──────────────
+              Free Online APIs (Section 3)
+              ──────────────┼──────────────
+                            │
+              ┌─────────────┴──────────────────┐
+              │   Cisco DevNet Always-On (free) │
+              │   demo.netbox.dev  (free)        │
+              │   bgpview API      (free)        │
+              │   peeringdb API    (free)        │
+              └─────────────┬──────────────────┘
+                            │ HTTPS / REST
+════════════════════════════╪══════════════════════════════════════
+              CLASSROOM MANAGEMENT NETWORK  10.0.0.0/24
+════════════════════════════╪══════════════════════════════════════
+                            │
+                     ┌──────┴──────────┐        ┌─────────────────┐
+                     │  GIT SERVER     │        │     NETBOX      │
+                     │  10.0.0.60      │        │  10.100.100.25  │
+                     │  (Gitea/GitHub) │        │  :8000          │
+                     │  • Shared repo  │        │  • IPAM/DCIM    │
+                     │  • Student repos│        │  • Inventory    │
+                     └──────┬──────────┘        │  • API source   │
+                            │                    └────────┬────────┘
+                            │                             │
+════════════════════════════╪═════════════════════════════╪══════════
+              AUTOMATION & LAB DEVICE NETWORK  10.106.106.0/24
+════════════════════════════╪═════════════════════════════╪══════════
+                            │                             │
+                     ┌──────┴──────────┐                  │
+                     │  CONTROL NODE   │◄──── REST API ────┘
+                     │  10.106.106.60  │
+                     │  • Git          │
+                     │  • Ansible      │
+                     │  • Python       │
+                     │  • VS Code      │
+                     └──────┬──────────┘
+                            │
+                            │    SSH / RESTCONF / Ansible
+                            │
+        ┌───────────────────┼──────────────────┐
+        │                   │                  │
+┌───────┴────────┐  ┌───────┴────────┐  ┌──────┴──────────┐
+│  ROUTER-1      │  │  ROUTER-2      │  │  SWITCH-1       │
+│  10.106.106.61 │  │  10.106.106.62 │  │  10.106.106.63  │
+│  IOS-XE        │  │  NX-OS         │  │  IOS            │
+│  OSPF Area0    │  │                │  │  VLAN 10/20     │
+└────────────────┘  └────────────────┘  └─────────────────┘
+
+  ┌──────────────────────────────────────────────────────────┐
+  │              STUDENT PODS  (×10–12 students)             │
+  │                                                          │
+  │  Pod-01..12   10.0.0.101–112   Laptop / VM               │
+  │  Each student: own Git branch + Ansible inventory entry  │
+  └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Lab Sections Overview
+## Lab Sections
 
 | # | Section | Tools | Objective |
 |---|---------|-------|-----------|
-| 1 | [Git for Network Automation](Section-1-GIT/README.md) | Git, GitHub | Version-control network configurations |
-| 2 | [Ansible for Network Automation](Section-2-Ansible/README.md) | Ansible, Jinja2 | Automate device configuration at scale |
-| 3 | [API for Network Automation](Section-3-API/README.md) | Python, REST, RESTCONF | Programmatic network control |
+| 1 | [Git for Network Automation](Section-1-GIT/README.md) | Git, Gitea | Version-control device configs; branch-per-CR workflow |
+| 2 | [Ansible for Network Automation](Section-2-Ansible/README.md) | Ansible, Jinja2 | Push config to routers & switch; compliance checks |
+| 3 | [API for Network Automation](Section-3-API/README.md) | Python, REST, RESTCONF, NetBox | Query devices & public APIs; build dynamic inventory |
+
+---
+
+## Free Online APIs Used in Section 3
+
+| Service | URL | What Students Explore |
+|---------|-----|-----------------------|
+| Cisco DevNet Always-On IOS-XE | `sandbox-iosxe-latest-1.cisco.com` | RESTCONF on a real IOS-XE device |
+| NetBox Demo | `https://demo.netbox.dev` | IPAM/DCIM REST API |
+| BGPView | `https://api.bgpview.io` | BGP routing data, prefix lookups |
+| PeeringDB | `https://www.peeringdb.com/api/` | Internet exchange and peering data |
+| ipinfo.io | `https://ipinfo.io` | IP geolocation & ASN info |
+| httpbin.org | `https://httpbin.org` | HTTP method practice (GET/POST/PUT) |
+
+---
+
+## Student Lab Setup
+
+```bash
+# Each student clones the shared repo and creates their own branch
+git clone http://10.0.0.60/bootcamp/Network-Automation-Bootcamp.git
+cd Network-Automation-Bootcamp
+git checkout -b student/pod-XX-yourname
+
+# Install Python dependencies
+pip install ansible requests netmiko napalm pynetbox
+```
 
 ---
 
@@ -73,32 +111,10 @@ A hands-on lab environment for learning network automation using **Git**, **Ansi
 | Git | ≥ 2.30 | Source control |
 | Python | ≥ 3.9 | Scripting & API calls |
 | Ansible | ≥ 2.14 | Configuration management |
-| `requests` (pip) | latest | HTTP client for API labs |
-| `netmiko` (pip) | latest | Multi-vendor SSH sessions |
-| `napalm` (pip) | latest | Network device abstraction |
-
-```bash
-# Install Python dependencies
-pip install ansible requests netmiko napalm
-```
-
----
-
-## Quick Start
-
-```bash
-git clone https://github.com/<your-org>/Network-Automation-Bootcamp.git
-cd Network-Automation-Bootcamp
-
-# Section 1 — Git
-cd Section-1-GIT && cat README.md
-
-# Section 2 — Ansible
-cd ../Section-2-Ansible && ansible-playbook -i inventory/hosts.ini playbooks/01-gather-facts.yml
-
-# Section 3 — API
-cd ../Section-3-API && python3 scripts/01_rest_get_interfaces.py
-```
+| `requests` | latest | HTTP client |
+| `netmiko` | latest | Multi-vendor SSH |
+| `napalm` | latest | Device abstraction |
+| `pynetbox` | latest | NetBox API client |
 
 ---
 
@@ -106,18 +122,14 @@ cd ../Section-3-API && python3 scripts/01_rest_get_interfaces.py
 
 ```
 Network-Automation-Bootcamp/
-├── README.md                         ← You are here
-├── diagrams/
-│   └── lab-topology.md               ← Detailed topology diagram
+├── README.md
+├── diagrams/lab-topology.md
 ├── Section-1-GIT/
 │   ├── README.md
-│   ├── exercises/
-│   │   ├── 01-init-and-commit.md
-│   │   ├── 02-branching-strategy.md
-│   │   └── 03-config-rollback.md
-│   └── configs/
-│       ├── router1_baseline.cfg
-│       └── switch1_baseline.cfg
+│   ├── configs/
+│   │   ├── router1_baseline.cfg
+│   │   └── switch1_baseline.cfg
+│   └── exercises/
 ├── Section-2-Ansible/
 │   ├── README.md
 │   ├── inventory/
@@ -127,30 +139,18 @@ Network-Automation-Bootcamp/
 │   │   ├── 01-gather-facts.yml
 │   │   ├── 02-push-config.yml
 │   │   └── 03-compliance-check.yml
-│   └── templates/
-│       └── interface.j2
+│   └── templates/interface.j2
 └── Section-3-API/
     ├── README.md
     ├── scripts/
-    │   ├── 01_rest_get_interfaces.py
+    │   ├── 01_netbox_get_devices.py
     │   ├── 02_restconf_push_config.py
-    │   └── 03_netbox_inventory.py
+    │   ├── 03_bgpview_lookup.py
+    │   └── 04_devnet_sandbox.py
     └── examples/
-        ├── sample_response.json
-        └── postman_collection.json
+        └── sample_response.json
 ```
 
 ---
 
-## Learning Outcomes
-
-After completing this bootcamp you will be able to:
-
-- Track and roll back network configurations using **Git workflows**
-- Write **Ansible playbooks** to configure routers, switches, and firewalls at scale
-- Consume **REST / RESTCONF APIs** to query and push configuration programmatically
-- Combine all three tools into an end-to-end **automated change pipeline**
-
----
-
-*Lab version 1.0 — May 2026*
+*Lab version 2.0 — May 2026 · 10–12 student capacity*

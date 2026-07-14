@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Network Automation Bootcamp Word document."""
+"""Generate the Network Automation Bootcamp Word document (v2.0)."""
 
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches, Cm
@@ -11,243 +11,251 @@ import datetime
 
 doc = Document()
 
-# ── Styles helpers ──────────────────────────────────────────────────────────
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
-def set_heading(doc, text, level=1, color=None):
+def heading(text, level=1, color=(0x1F, 0x4E, 0x79)):
     h = doc.add_heading(text, level=level)
-    if color:
-        for run in h.runs:
-            run.font.color.rgb = RGBColor(*color)
+    for run in h.runs:
+        run.font.color.rgb = RGBColor(*color)
     return h
 
-def add_code_block(doc, code_text):
+def code(text):
     p = doc.add_paragraph()
     p.paragraph_format.left_indent = Cm(0.5)
-    run = p.add_run(code_text)
+    run = p.add_run(text)
     run.font.name = "Courier New"
     run.font.size = Pt(8)
-    run.font.color.rgb = RGBColor(0x20, 0x20, 0x20)
-    shading = OxmlElement("w:shd")
-    shading.set(qn("w:val"), "clear")
-    shading.set(qn("w:color"), "auto")
-    shading.set(qn("w:fill"), "F0F0F0")
-    p._p.get_or_add_pPr().append(shading)
-    return p
+    run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x1A)
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), "EFEFEF")
+    p._p.get_or_add_pPr().append(shd)
 
-def add_table(doc, headers, rows, col_widths=None):
-    table = doc.add_table(rows=1, cols=len(headers))
-    table.style = "Table Grid"
-    table.alignment = WD_TABLE_ALIGNMENT.LEFT
-    hdr_cells = table.rows[0].cells
+def table(headers, rows, col_widths=None):
+    t = doc.add_table(rows=1, cols=len(headers))
+    t.style = "Table Grid"
+    t.alignment = WD_TABLE_ALIGNMENT.LEFT
     for i, h in enumerate(headers):
-        hdr_cells[i].text = h
-        for para in hdr_cells[i].paragraphs:
-            for run in para.runs:
-                run.bold = True
-                run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        tc = hdr_cells[i]._tc
-        tcPr = tc.get_or_add_tcPr()
+        cell = t.rows[0].cells[i]
+        cell.text = h
+        for run in cell.paragraphs[0].runs:
+            run.bold = True
+            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
         shd = OxmlElement("w:shd")
         shd.set(qn("w:val"), "clear")
         shd.set(qn("w:color"), "auto")
         shd.set(qn("w:fill"), "1F4E79")
-        tcPr.append(shd)
-    for row_data in rows:
-        row_cells = table.add_row().cells
-        for i, val in enumerate(row_data):
-            row_cells[i].text = str(val)
+        cell._tc.get_or_add_tcPr().append(shd)
+    for row in rows:
+        cells = t.add_row().cells
+        for i, v in enumerate(row):
+            cells[i].text = str(v)
     if col_widths:
-        for i, width in enumerate(col_widths):
-            for row in table.rows:
-                row.cells[i].width = Inches(width)
+        for i, w in enumerate(col_widths):
+            for row in t.rows:
+                row.cells[i].width = Inches(w)
     doc.add_paragraph()
-    return table
 
-# ── Cover page ───────────────────────────────────────────────────────────────
+def bullet(text):
+    doc.add_paragraph(text, style="List Bullet")
 
-doc.add_paragraph()
-title = doc.add_paragraph()
-title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = title.add_run("Network Automation Bootcamp")
-run.bold = True
-run.font.size = Pt(28)
-run.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
-
-subtitle = doc.add_paragraph()
-subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run2 = subtitle.add_run("Lab Guide — Git · Ansible · REST API")
-run2.font.size = Pt(16)
-run2.font.color.rgb = RGBColor(0x2E, 0x74, 0xB5)
+# ── Cover ─────────────────────────────────────────────────────────────────────
 
 doc.add_paragraph()
-meta = doc.add_paragraph()
-meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-meta.add_run(f"Version 1.0   |   {datetime.date.today().strftime('%B %Y')}").font.size = Pt(11)
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run("Network Automation Bootcamp")
+r.bold = True; r.font.size = Pt(28); r.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
+
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run("Lab Guide — Git · Ansible · REST API")
+r.font.size = Pt(16); r.font.color.rgb = RGBColor(0x2E, 0x74, 0xB5)
+
+doc.add_paragraph()
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run(f"Version 2.0   |   {datetime.date.today().strftime('%B %Y')}   |   10–12 Students")
+r.font.size = Pt(11)
 
 doc.add_page_break()
 
 # ── 1. Introduction ───────────────────────────────────────────────────────────
 
-set_heading(doc, "1. Introduction", 1, (0x1F, 0x4E, 0x79))
+heading("1. Introduction")
 doc.add_paragraph(
-    "The Network Automation Bootcamp is a hands-on lab environment designed to introduce "
-    "network engineers to three core pillars of modern network automation: Git, Ansible, "
-    "and REST APIs. Each section builds on the previous one, culminating in a fully "
-    "automated change pipeline that can version-control, deploy, and verify network "
-    "configurations across a heterogeneous device fleet."
+    "The Network Automation Bootcamp is a hands-on lab designed for 10–12 network engineers. "
+    "It covers three core pillars of modern network automation: Git, Ansible, and REST APIs. "
+    "Students work on shared lab devices (two routers and one switch), a local NetBox instance "
+    "as the source of truth, and several free public APIs to explore real-world data — no "
+    "accounts or credit cards required."
 )
 
-set_heading(doc, "1.1 Learning Objectives", 2, (0x2E, 0x74, 0xB5))
-objectives = [
-    "Use Git to version-control network device configurations and manage change branches.",
-    "Write Ansible playbooks that configure routers, switches, and firewalls at scale.",
-    "Consume REST and RESTCONF APIs to query device state and push configuration programmatically.",
-    "Combine all three tools into a repeatable, auditable end-to-end automation workflow.",
-]
-for obj in objectives:
-    p = doc.add_paragraph(style="List Bullet")
-    p.add_run(obj)
+heading("1.1 Learning Objectives", 2, (0x2E, 0x74, 0xB5))
+for obj in [
+    "Track and roll back network configs using Git branches and merge requests.",
+    "Write Ansible playbooks to configure routers and a switch at scale with Jinja2 templates.",
+    "Consume the NetBox REST API to query and update the source of truth.",
+    "Query free public APIs (BGPView, PeeringDB, Cisco DevNet sandbox) to explore real BGP data.",
+    "Connect all three tools into a repeatable, auditable end-to-end change pipeline.",
+]:
+    bullet(obj)
 
-set_heading(doc, "1.2 Prerequisites", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
+heading("1.2 Student Setup", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph("Each student receives:")
+for item in [
+    "A workstation IP in 10.0.0.101–112 (Pod-01 to Pod-12)",
+    "A personal Git branch:  student/pod-XX-yourname",
+    "A personal NetBox API token for the lab duration",
+    "SSH credentials for the shared lab devices",
+]:
+    bullet(item)
+
+code(
+"git clone http://10.0.0.60/bootcamp/Network-Automation-Bootcamp.git\n"
+"cd Network-Automation-Bootcamp\n"
+"git checkout -b student/pod-XX-yourname\n"
+"pip install ansible requests netmiko napalm pynetbox"
+)
+
+heading("1.3 Prerequisites", 2, (0x2E, 0x74, 0xB5))
+table(
     ["Requirement", "Version", "Purpose"],
     [
         ["Git",        "≥ 2.30",  "Source control for network configs"],
         ["Python",     "≥ 3.9",   "Scripting and API interaction"],
         ["Ansible",    "≥ 2.14",  "Configuration management engine"],
-        ["requests",   "latest",  "HTTP client for REST API labs"],
+        ["requests",   "latest",  "HTTP client for REST/RESTCONF"],
         ["netmiko",    "latest",  "Multi-vendor SSH sessions"],
         ["napalm",     "latest",  "Device abstraction layer"],
+        ["pynetbox",   "latest",  "NetBox API Python wrapper"],
     ],
-    [2.0, 1.5, 3.5]
+    [1.8, 1.2, 3.5]
 )
 
-# ── 2. Lab Topology ───────────────────────────────────────────────────────────
+# ── 2. Lab Architecture ───────────────────────────────────────────────────────
 
-set_heading(doc, "2. Lab Architecture & Topology", 1, (0x1F, 0x4E, 0x79))
+heading("2. Lab Architecture & Topology")
 doc.add_paragraph(
-    "The lab consists of a Control Node running on Linux that communicates with a set of "
-    "network devices over the Management Network (10.0.0.0/24). An IPAM platform (NetBox) "
-    "and a generic NMS/API endpoint complement the device layer."
+    "The lab spans three networks: the classroom management network (10.0.0.0/24) where "
+    "students and the Git server live; the automation & device network (10.106.106.0/24) "
+    "where the control node and the routers/switch live; NetBox on its own network "
+    "(10.100.100.0/24); and the internet for free public API access."
 )
 
-add_code_block(doc,
-"""                        INTERNET
-                            │
-                     ┌──────┴──────┐
-                     │  ISP EDGE   │
-                     └──────┬──────┘
-                            │ 203.0.113.2
-                     ┌──────┴──────────────────┐
-                     │        ROUTER-1          │
-                     │  Gi0/0: 203.0.113.1/30   │
-                     │  Gi0/1: 10.0.0.1/24      │
-                     │  IOS-XE / OSPF Area 0    │
-                     └──────┬──────────────────┘
-                            │
-                     ┌──────┴──────────────────┐
-                     │        SWITCH-1          │
-                     │  VLAN 10/20/99           │
-                     │  Mgmt: 10.0.0.10/24      │
-                     └──────┬──────┬────────────┘
-                  VLAN 10   │      │   VLAN 20
-            ┌───────────────┘      └──────────────┐
-      ┌─────┴──────┐                     ┌─────────┴──────┐
-      │  SERVER-1  │                     │ WORKSTATION-1  │
-      │10.0.10.1/24│                     │ 10.0.20.1/24   │
-      └────────────┘                     └────────────────┘
-
-  ── MANAGEMENT NETWORK (10.0.0.0/24) ─────────────────────────
-        ┌──────────┬──────────┬──────────┬──────────────┐
-        │          │          │          │              │
-  ┌─────┴───┐ ┌───┴─────┐ ┌──┴──────┐ ┌─┴──────┐ ┌────┴────────┐
-  │CONTROL  │ │ROUTER-2 │ │FIREWALL │ │NETBOX  │ │  NMS/API    │
-  │  NODE   │ │10.0.0.2 │ │10.0.0.254│ │:8000   │ │   :8080     │
-  │10.0.0.50│ │  NX-OS  │ │  ASA    │ │        │ │             │
-  │Git/Ans/ │ └─────────┘ └─────────┘ └────────┘ └─────────────┘
-  │  API    │
-  └─────────┘"""
+code(
+"                         INTERNET\n"
+"                             │\n"
+"          ───────────────────┼──────────────────────\n"
+"            FREE PUBLIC APIs (no account needed)\n"
+"          ───────────────────┼──────────────────────\n"
+"          │                  │                      │\n"
+"  Cisco DevNet IOS-XE   BGPView API          PeeringDB\n"
+"  (sandbox free)         (free)               (free)\n"
+"          │                  │                      │\n"
+"          └──────────────────┼──────────────────────┘\n"
+"                             │ HTTPS\n"
+"═════════════════════════════╪══════════════════════════\n"
+"         MGMT NETWORK  10.0.0.0/24\n"
+"═════════════════════════════╪══════════════════════════\n"
+"                             │\n"
+"                        GIT SERVER            NETBOX\n"
+"                        10.0.0.60          10.100.100.25\n"
+"                        (Gitea)              :8000 (IPAM)\n"
+"                             │                    │\n"
+"═════════════════════════════╪════════════════════╪══════\n"
+"     AUTOMATION & DEVICE NETWORK  10.106.106.0/24\n"
+"═════════════════════════════╪════════════════════╪══════\n"
+"                             │                    │\n"
+"                       CONTROL NODE ◄── REST API ──┘\n"
+"                       10.106.106.60\n"
+"                       Git/Ansible/Python\n"
+"                             │\n"
+"                             │ SSH / RESTCONF / Ansible\n"
+"       ┌─────────────────────┼───────────────┐\n"
+"       │                     │               │\n"
+"  ROUTER-1              ROUTER-2        SWITCH-1\n"
+"  10.106.106.61          10.106.106.62   10.106.106.63\n"
+"  IOS-XE                 NX-OS           IOS  VLANs\n"
+"\n"
+"═══════════════════════════════════════════════════\n"
+"  STUDENT PODS  10.0.0.101 – 10.0.0.112  (×12)\n"
+"═══════════════════════════════════════════════════"
 )
 
-set_heading(doc, "2.1 IP Address Plan", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
-    ["Device", "Interface", "IP Address", "Subnet", "Role"],
+heading("2.1 IP Address Plan", 2, (0x2E, 0x74, 0xB5))
+table(
+    ["Device / Host", "IP Address", "Role"],
     [
-        ["Router-1",      "Gi0/0",  "203.0.113.1", "/30",  "WAN Uplink"],
-        ["Router-1",      "Gi0/1",  "10.0.0.1",   "/24",  "LAN Gateway"],
-        ["Router-2",      "Gi0/0",  "10.0.0.2",   "/24",  "Secondary Router"],
-        ["Switch-1",      "Vlan99", "10.0.0.10",  "/24",  "Management"],
-        ["Firewall-1",    "Mgmt",   "10.0.0.254", "/24",  "Default GW Backup"],
-        ["Control Node",  "eth0",   "10.0.0.50",  "/24",  "Automation Engine"],
-        ["NetBox",        "eth0",   "10.0.0.100", "/24",  "IPAM / DCIM"],
-        ["NMS/API",       "eth0",   "10.0.0.200", "/24",  "REST API Endpoint"],
+        ["Control Node",     "10.106.106.60", "Automation engine (shared)"],
+        ["NetBox",           "10.100.100.25", "IPAM / DCIM + REST API"],
+        ["Gitea (Git Srv)",  "10.0.0.60",     "Repository server"],
+        ["Router-1",         "10.106.106.61", "IOS-XE lab router + RESTCONF"],
+        ["Router-2",         "10.106.106.62", "NX-OS secondary router"],
+        ["Switch-1",         "10.106.106.63", "IOS access switch + VLANs"],
+        ["Student Pod 01–12","10.0.0.101–112","Student workstations"],
     ],
-    [1.5, 1.2, 1.5, 0.8, 2.0]
+    [2.0, 1.5, 3.0]
 )
 
-# ── 3. Section 1 — Git ────────────────────────────────────────────────────────
+heading("2.2 Free Public API Reference", 2, (0x2E, 0x74, 0xB5))
+table(
+    ["Service", "Base URL", "Auth", "Best For"],
+    [
+        ["Cisco DevNet IOS-XE", "sandbox-iosxe-latest-1.cisco.com", "devnetuser/Cisco123!", "RESTCONF on real IOS-XE"],
+        ["NetBox Demo",         "demo.netbox.dev/api/",              "Public demo token",   "IPAM API queries"],
+        ["BGPView",             "api.bgpview.io",                    "None",                "ASN, prefix, BGP data"],
+        ["PeeringDB",           "peeringdb.com/api/",                "None (read)",         "IX and peering records"],
+        ["ipinfo.io",           "ipinfo.io",                         "None (50 k/mo)",      "IP geolocation & ASN"],
+        ["httpbin.org",         "httpbin.org",                       "None",                "HTTP method practice"],
+    ],
+    [1.8, 1.8, 1.4, 1.5]
+)
 
-set_heading(doc, "3. Section 1 — Git for Network Automation", 1, (0x1F, 0x4E, 0x79))
+# ── 3. Git ────────────────────────────────────────────────────────────────────
+
+heading("3. Section 1 — Git for Network Automation")
 doc.add_paragraph(
-    "Git gives network teams a single source of truth for device configurations. "
-    "Every change is tracked, attributed, and reversible. This section introduces "
-    "core Git concepts through three practical exercises."
+    "Git is the single source of truth for all device configurations. Every change is "
+    "tracked, attributed, and reversible. Students work on personal branches and submit "
+    "merge requests to main, mirroring real change-management workflows."
 )
 
-set_heading(doc, "3.1 Why Git?", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
-    ["Traditional Approach", "Git-Based Approach"],
-    [
-        ["Configs saved on one engineer's laptop", "Shared repository with central backup"],
-        ["No change history",                      "Full audit trail: author, date, reason"],
-        ["Rollback = manual copy-paste",           "git revert restores instantly"],
-        ["No review process",                      "Pull Requests enforce peer review"],
-    ],
-    [3.2, 3.2]
+heading("3.1 Exercise 1 — Initialise a Config Repository", 2, (0x2E, 0x74, 0xB5))
+code(
+"mkdir net-configs && cd net-configs\n"
+"git init\n"
+"git config user.name  'Network Engineer'\n"
+"git config user.email 'neteng@example.com'\n"
+"cp ../configs/router1_baseline.cfg .\n"
+"git add router1_baseline.cfg\n"
+"git commit -m 'feat: add Router-1 baseline config'\n"
+"git log --oneline"
 )
 
-set_heading(doc, "3.2 Exercise 1 — Initialise a Config Repository", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Create a new Git repository and commit a baseline router configuration.")
-add_code_block(doc,
-"""mkdir net-configs && cd net-configs
-git init
-git config user.name  "Network Engineer"
-git config user.email "neteng@example.com"
+heading("3.2 Exercise 2 — Branching for Change Management", 2, (0x2E, 0x74, 0xB5))
+code(
+"git checkout -b change/CR-1042-add-loopback\n"
+"echo 'interface Loopback0\\n ip address 10.255.255.1 255.255.255.255' >> router1.cfg\n"
+"git add router1.cfg\n"
+"git commit -m 'feat(CR-1042): add Loopback0 to Router-1'\n"
+"git diff main change/CR-1042-add-loopback\n"
+"git checkout main\n"
+"git merge --no-ff change/CR-1042-add-loopback"
+)
 
-cp ../configs/router1_baseline.cfg .
-git add router1_baseline.cfg
-git commit -m "feat: add Router-1 baseline config"
-git log --oneline""")
+heading("3.3 Exercise 3 — Configuration Rollback", 2, (0x2E, 0x74, 0xB5))
+code(
+"echo 'no ip routing' >> router1.cfg\n"
+"git add router1.cfg && git commit -m 'ERROR: removed ip routing'\n"
+"git log --oneline\n"
+"git revert HEAD          # safe: creates an undo commit\n"
+"git push origin main"
+)
 
-set_heading(doc, "3.3 Exercise 2 — Branching for Change Management", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Use a feature branch per change request, then merge after peer review.")
-add_code_block(doc,
-"""git checkout -b change/CR-1042-add-loopback
-
-echo "interface Loopback0
- ip address 10.255.255.1 255.255.255.255
- no shutdown" >> router1_baseline.cfg
-
-git add router1_baseline.cfg
-git commit -m "feat(CR-1042): add Loopback0 to Router-1"
-
-git diff main change/CR-1042-add-loopback   # review before merging
-git checkout main
-git merge --no-ff change/CR-1042-add-loopback""")
-
-set_heading(doc, "3.4 Exercise 3 — Configuration Rollback", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Simulate a bad commit and restore the previous good state.")
-add_code_block(doc,
-"""echo "no ip routing" >> router1_baseline.cfg
-git add router1_baseline.cfg
-git commit -m "ERROR: accidentally removed ip routing"
-
-git log --oneline              # identify the good commit hash
-git revert HEAD                # safe: creates an undo commit
-git push origin main""")
-
-set_heading(doc, "3.5 Key Git Commands", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
+heading("3.4 Key Git Commands", 2, (0x2E, 0x74, 0xB5))
+table(
     ["Command", "Purpose"],
     [
         ["git init",                    "Initialise a new repository"],
@@ -258,232 +266,206 @@ add_table(doc,
         ["git checkout -b <branch>",    "Create and switch to new branch"],
         ["git merge --no-ff <branch>",  "Merge with a merge commit"],
         ["git revert HEAD",             "Undo last commit (safe)"],
-        ["git reset --hard <hash>",     "Discard commits (destructive)"],
-        ["git tag v1.0",                "Tag a release / golden config"],
+        ["git tag v1.0",                "Tag a golden config release"],
     ],
     [3.0, 3.5]
 )
 
-# ── 4. Section 2 — Ansible ───────────────────────────────────────────────────
+# ── 4. Ansible ────────────────────────────────────────────────────────────────
 
-set_heading(doc, "4. Section 2 — Ansible for Network Automation", 1, (0x1F, 0x4E, 0x79))
+heading("4. Section 2 — Ansible for Network Automation")
 doc.add_paragraph(
-    "Ansible is an agentless automation engine that connects to devices over SSH "
-    "or NETCONF and applies declarative YAML playbooks. This section covers inventory "
-    "setup, three production-quality playbooks, and Jinja2 templating."
+    "Ansible connects to the lab routers and switch over SSH and applies declarative YAML "
+    "playbooks. Students always run with --check --diff before applying, mirroring the "
+    "peer-review gate used in production."
 )
 
-set_heading(doc, "4.1 Inventory File", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Group devices by role in inventory/hosts.ini:")
-add_code_block(doc,
-"""[routers]
-router1 ansible_host=10.0.0.1
-router2 ansible_host=10.0.0.2
-
-[switches]
-switch1 ansible_host=10.0.0.10
-
-[firewalls]
-fw1     ansible_host=10.0.0.254
-
-[network:children]
-routers
-switches
-firewalls
-
-[network:vars]
-ansible_user=admin
-ansible_password=Lab@1234
-ansible_network_os=ios
-ansible_connection=network_cli""")
-
-set_heading(doc, "4.2 Playbook 1 — Gather Facts", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph(
-    "Connects to all devices, collects OS version, serial number, and interface list, "
-    "then saves output to ./facts/ directory."
-)
-add_code_block(doc,
-"ansible-playbook -i inventory/hosts.ini playbooks/01-gather-facts.yml")
-
-set_heading(doc, "4.3 Playbook 2 — Push Interface Configuration", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph(
-    "Renders a Jinja2 template per device and pushes interface descriptions, "
-    "IP addresses, and shutdown state."
-)
-add_code_block(doc,
-"""# Dry run first
-ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml --check --diff
-
-# Apply
-ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml""")
-
-set_heading(doc, "4.4 Playbook 3 — Compliance Check", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph(
-    "Verifies SSH v2, NTP, and IP routing are configured correctly across all "
-    "devices and generates a per-device compliance report."
-)
-add_code_block(doc,
-"ansible-playbook -i inventory/hosts.ini playbooks/03-compliance-check.yml")
-
-set_heading(doc, "4.5 Jinja2 Template Example", 2, (0x2E, 0x74, 0xB5))
-add_code_block(doc,
-"""{% for iface in interfaces %}
-interface {{ iface.name }}
- description {{ iface.description }}
- {% if iface.ip is defined %}
- ip address {{ iface.ip }} {{ iface.mask }}
- {% endif %}
- {% if iface.shutdown %}shutdown{% else %}no shutdown{% endif %}
-!
-{% endfor %}""")
-
-set_heading(doc, "4.6 Key Ansible Modules", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
-    ["Module", "Purpose"],
+heading("4.1 Lab Devices", 2, (0x2E, 0x74, 0xB5))
+table(
+    ["Host", "IP", "OS", "Role"],
     [
-        ["cisco.ios.ios_command",               "Run show commands on IOS devices"],
-        ["cisco.ios.ios_config",                "Push config lines to IOS devices"],
-        ["cisco.ios.ios_facts",                 "Gather device facts (OS, interfaces, etc.)"],
-        ["ansible.netcommon.cli_command",       "Vendor-neutral CLI commands"],
-        ["ansible.netcommon.netconf_config",    "Push NETCONF XML payloads"],
-        ["community.general.napalm_get_facts",  "Normalised facts via NAPALM"],
+        ["router1", "10.106.106.61",  "IOS-XE", "Core router / OSPF / RESTCONF"],
+        ["router2", "10.106.106.62",  "NX-OS",  "Secondary router"],
+        ["switch1", "10.106.106.63", "IOS",    "Access switch / VLANs"],
     ],
-    [3.0, 3.5]
+    [1.2, 1.2, 1.0, 3.0]
 )
 
-# ── 5. Section 3 — API ────────────────────────────────────────────────────────
+heading("4.2 Inventory File (hosts.ini)", 2, (0x2E, 0x74, 0xB5))
+code(
+"[routers]\n"
+"router1 ansible_host=10.106.106.61\n"
+"router2 ansible_host=10.106.106.62\n"
+"\n"
+"[switches]\n"
+"switch1 ansible_host=10.106.106.63\n"
+"\n"
+"[network:children]\n"
+"routers\n"
+"switches\n"
+"\n"
+"[network:vars]\n"
+"ansible_user=admin\n"
+"ansible_password=Lab@1234\n"
+"ansible_network_os=ios\n"
+"ansible_connection=network_cli"
+)
 
-set_heading(doc, "5. Section 3 — REST API for Network Automation", 1, (0x1F, 0x4E, 0x79))
+heading("4.3 Playbook 1 — Gather Facts", 2, (0x2E, 0x74, 0xB5))
+code("ansible-playbook -i inventory/hosts.ini playbooks/01-gather-facts.yml")
+
+heading("4.4 Playbook 2 — Push Interface Config", 2, (0x2E, 0x74, 0xB5))
+code(
+"ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml --check --diff\n"
+"ansible-playbook -i inventory/hosts.ini playbooks/02-push-config.yml"
+)
+
+heading("4.5 Playbook 3 — Compliance Check", 2, (0x2E, 0x74, 0xB5))
+code("ansible-playbook -i inventory/hosts.ini playbooks/03-compliance-check.yml")
+
+heading("4.6 Jinja2 Template Snippet", 2, (0x2E, 0x74, 0xB5))
+code(
+"{% for iface in interfaces %}\n"
+"interface {{ iface.name }}\n"
+" description {{ iface.description }}\n"
+" {% if iface.ip is defined %}\n"
+" ip address {{ iface.ip }} {{ iface.mask }}\n"
+" {% endif %}\n"
+" {% if iface.shutdown %}shutdown{% else %}no shutdown{% endif %}\n"
+"!\n"
+"{% endfor %}"
+)
+
+# ── 5. API ────────────────────────────────────────────────────────────────────
+
+heading("5. Section 3 — REST API for Network Automation")
 doc.add_paragraph(
-    "REST and RESTCONF APIs provide structured, programmatic access to network devices "
-    "and management platforms. This section covers three Python scripts: querying "
-    "interface state, pushing configuration, and building dynamic Ansible inventory "
-    "from NetBox."
+    "This section uses two types of APIs: the local NetBox REST API as a source of truth, "
+    "and several free, no-account public APIs for exploring real-world routing and network data."
 )
 
-set_heading(doc, "5.1 API Types", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
-    ["Type", "Protocol", "Port", "Format", "Used With"],
-    [
-        ["REST",      "HTTP/S",  "80/443", "JSON",     "NMS, NetBox, Cisco DNA"],
-        ["RESTCONF",  "HTTPS",   "443",    "JSON/XML",  "IOS-XE, NX-OS"],
-        ["NETCONF",   "SSH",     "830",    "XML",       "IOS-XE, Junos, NX-OS"],
-    ],
-    [1.2, 1.2, 0.8, 1.2, 2.0]
-)
-
-set_heading(doc, "5.2 Script 1 — GET Interface Status", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Queries the RESTCONF interfaces endpoint and prints a formatted table.")
-add_code_block(doc,
-"""import requests
-from requests.auth import HTTPBasicAuth
-
-url = "https://10.0.0.1/restconf/data/ietf-interfaces:interfaces"
-resp = requests.get(url,
-    auth=HTTPBasicAuth("admin", "Lab@1234"),
-    headers={"Accept": "application/yang-data+json"},
-    verify=False)
-data = resp.json()""")
-
-set_heading(doc, "5.3 Script 2 — PUT Interface Configuration", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph("Pushes a JSON payload to configure an interface via RESTCONF PUT.")
-add_code_block(doc,
-"""payload = {
-  "ietf-interfaces:interface": {
-    "name": "GigabitEthernet0/1",
-    "description": "LAN_SEGMENT_AUTOMATED",
-    "enabled": True,
-    "ietf-ip:ipv4": {
-      "address": [{"ip": "10.0.0.1", "prefix-length": 24}]
-    }
-  }
-}
-resp = requests.put(url, json=payload, auth=auth, headers=headers, verify=False)""")
-
-set_heading(doc, "5.4 Script 3 — NetBox Dynamic Inventory", 2, (0x2E, 0x74, 0xB5))
+heading("5.1 Script 1 — NetBox: Query Devices", 2, (0x2E, 0x74, 0xB5))
 doc.add_paragraph(
-    "Pulls all active devices from NetBox and outputs Ansible-compatible JSON inventory "
-    "grouped by device role. Use as: ansible-playbook pb.yml -i 03_netbox_inventory.py"
+    "Fetches active devices from the local NetBox instance and prints a summary table. "
+    "Students then extend the script to POST a new device via the API."
+)
+code(
+"NETBOX_URL   = 'http://10.100.100.25:8000'\n"
+"NETBOX_TOKEN = 'your_token_here'\n"
+"\n"
+"headers = {'Authorization': f'Token {NETBOX_TOKEN}'}\n"
+"resp = requests.get(f'{NETBOX_URL}/api/dcim/devices/?status=active', headers=headers)\n"
+"devices = resp.json()['results']"
 )
 
-set_heading(doc, "5.5 RESTCONF Quick Reference", 2, (0x2E, 0x74, 0xB5))
-add_table(doc,
-    ["HTTP Method", "Action", "Example Path"],
+heading("5.2 Script 2 — RESTCONF: Push Interface Config", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph(
+    "Uses RESTCONF (RFC 8040) and HTTP PUT to configure GigabitEthernet0/1 on Router-1 "
+    "with a description and IP address using the ietf-interfaces YANG model."
+)
+
+heading("5.3 Script 3 — BGPView: Real Routing Data (Free, No Auth)", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph(
+    "Queries the BGPView public API to look up ASN information and IPv4 prefixes. "
+    "Students use Cloudflare (AS13335) as a starting point, then look up their own ISP."
+)
+code(
+"# Look up Cloudflare (no auth required)\n"
+"resp = requests.get('https://api.bgpview.io/asn/13335')\n"
+"data = resp.json()['data']\n"
+"print(data['name'], data['country_code'])\n"
+"\n"
+"# List their prefixes\n"
+"resp = requests.get('https://api.bgpview.io/asn/13335/prefixes')\n"
+"prefixes = resp.json()['data']['ipv4_prefixes']"
+)
+
+heading("5.4 Script 4 — Cisco DevNet Always-On Sandbox (Free)", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph(
+    "Connects to Cisco's free, always-on IOS-XE sandbox using RESTCONF. No sign-up required. "
+    "Students query interfaces, then compare the YANG model output to show ip interface brief."
+)
+code(
+"SANDBOX = 'sandbox-iosxe-latest-1.cisco.com'\n"
+"auth    = HTTPBasicAuth('devnetuser', 'Cisco123!')\n"
+"url     = f'https://{SANDBOX}/restconf/data/ietf-interfaces:interfaces'\n"
+"resp    = requests.get(url, auth=auth, headers=HEADERS, verify=False)\n"
+"interfaces = resp.json()['ietf-interfaces:interfaces']['interface']"
+)
+
+heading("5.5 Other Free APIs to Explore", 2, (0x2E, 0x74, 0xB5))
+table(
+    ["API", "Example Call", "Returns"],
     [
-        ["GET",    "Read config/state",    "/restconf/data/ietf-interfaces:interfaces"],
-        ["PUT",    "Replace resource",     "/restconf/data/.../interface=Gi0%2F1"],
-        ["PATCH",  "Merge/update",         "/restconf/data/.../interface=Gi0%2F1"],
-        ["POST",   "Create resource",      "/restconf/data/ietf-interfaces:interfaces"],
-        ["DELETE", "Remove resource",      "/restconf/data/.../interface=Gi0%2F1"],
+        ["PeeringDB",  "GET /api/ix?name=AMS-IX",     "Internet exchange details"],
+        ["ipinfo.io",  "GET https://ipinfo.io/8.8.8.8","IP geo, ASN, org"],
+        ["httpbin.org","POST /post  (any JSON body)",   "Echo of your request"],
     ],
-    [1.5, 1.5, 3.5]
+    [1.5, 3.0, 2.0]
 )
 
 # ── 6. End-to-End Pipeline ────────────────────────────────────────────────────
 
-set_heading(doc, "6. End-to-End Automation Pipeline", 1, (0x1F, 0x4E, 0x79))
+heading("6. End-to-End Automation Pipeline")
 doc.add_paragraph(
-    "Combining all three tools creates a fully auditable, repeatable change pipeline:"
+    "Combining all three sections into a repeatable, auditable change workflow:"
 )
-add_code_block(doc,
-"""CHANGE REQUEST
-      │
-      ▼
-  git checkout -b change/CR-XXXX        ← Branch from main
-      │
-      ▼
-  Edit YAML vars / config template       ← Define desired state
-      │
-      ▼
-  ansible-playbook pb.yml --check --diff ← Preview changes
-      │
-      ▼
-  Pull Request → Peer Review             ← Human gate
-      │
-      ▼
-  git merge --no-ff                      ← Merge to main
-      │
-      ▼
-  ansible-playbook pb.yml                ← Apply to devices
-      │
-      ▼
-  python3 03-compliance-check.py         ← Verify via API
-      │
-      ▼
-  git tag v1.x                           ← Tag golden state""")
+code(
+"CHANGE REQUEST\n"
+"      │\n"
+"  git checkout -b change/CR-XXXX      ← branch from main\n"
+"      │\n"
+"  Edit YAML vars / Jinja2 template    ← define desired state\n"
+"      │\n"
+"  ansible-playbook --check --diff     ← preview diff\n"
+"      │\n"
+"  Pull Request → Peer Review          ← human gate\n"
+"      │\n"
+"  git merge --no-ff                   ← merge to main\n"
+"      │\n"
+"  ansible-playbook (apply)            ← push to devices\n"
+"      │\n"
+"  python3 01_netbox_get_devices.py    ← verify via NetBox API\n"
+"      │\n"
+"  git tag v1.x                        ← tag golden state"
+)
 
-# ── 7. Completion Criteria ────────────────────────────────────────────────────
+# ── 7. Completion Checklist ───────────────────────────────────────────────────
 
-set_heading(doc, "7. Lab Completion Criteria", 1, (0x1F, 0x4E, 0x79))
-add_table(doc,
+heading("7. Lab Completion Checklist")
+table(
     ["Section", "Criteria", "Done?"],
     [
-        ["Git",     "Repository initialised with at least one config file",                 "☐"],
-        ["Git",     "At least two commits visible in git log",                              "☐"],
-        ["Git",     "Feature branch created and merged",                                    "☐"],
-        ["Git",     "Config rollback demonstrated with git revert",                         "☐"],
-        ["Ansible", "Inventory file with at least 2 device groups",                        "☐"],
-        ["Ansible", "gather-facts playbook runs successfully",                              "☐"],
-        ["Ansible", "push-config playbook applies change via Jinja2 template",             "☐"],
-        ["Ansible", "compliance-check playbook generates a report",                        "☐"],
-        ["API",     "Script 1 queries and prints interface data",                           "☐"],
-        ["API",     "Script 2 applies config change via RESTCONF PUT",                     "☐"],
-        ["API",     "Script 3 generates Ansible-compatible inventory from NetBox",         "☐"],
-        ["API",     "All scripts handle HTTP errors gracefully",                            "☐"],
-        ["Pipeline","Full CR-to-deploy pipeline demonstrated end-to-end",                  "☐"],
+        ["Git",     "Repo initialised with at least one config file",           "☐"],
+        ["Git",     "At least two commits in git log",                          "☐"],
+        ["Git",     "Feature branch created and merged via merge request",      "☐"],
+        ["Git",     "Config rollback demonstrated with git revert",             "☐"],
+        ["Ansible", "Inventory with routers + switches groups",                 "☐"],
+        ["Ansible", "gather-facts playbook runs on all devices",                "☐"],
+        ["Ansible", "push-config applies change via Jinja2 template",           "☐"],
+        ["Ansible", "compliance-check generates a report",                      "☐"],
+        ["Ansible", "--check --diff used before every real push",               "☐"],
+        ["API",     "Script 1 queries NetBox and adds a device via POST",       "☐"],
+        ["API",     "Script 2 applies interface config via RESTCONF PUT",       "☐"],
+        ["API",     "Script 3 looks up an ASN and parses BGP prefixes",        "☐"],
+        ["API",     "Script 4 queries Cisco DevNet sandbox interfaces",         "☐"],
+        ["Pipeline","Full CR-to-deploy pipeline demonstrated end-to-end",       "☐"],
     ],
-    [1.2, 4.0, 0.8]
+    [1.2, 4.2, 0.8]
 )
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 
 doc.add_paragraph()
-footer_p = doc.add_paragraph()
-footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = footer_p.add_run(f"Network Automation Bootcamp v1.0  ·  {datetime.date.today().strftime('%B %Y')}")
-run.font.size = Pt(9)
-run.font.color.rgb = RGBColor(0x80, 0x80, 0x80)
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run(
+    f"Network Automation Bootcamp v2.0  ·  {datetime.date.today().strftime('%B %Y')}  "
+    "·  10–12 Students"
+)
+r.font.size = Pt(9)
+r.font.color.rgb = RGBColor(0x80, 0x80, 0x80)
 
-output_path = "/home/jgo/Documents/Automation/Network-Automation-Bootcamp/Network_Automation_Bootcamp_Lab_Guide.docx"
-doc.save(output_path)
-print(f"Document saved: {output_path}")
+output = "/home/jgo/Documents/Automation/Network-Automation-Bootcamp/Network_Automation_Bootcamp_Lab_Guide.docx"
+doc.save(output)
+print(f"Saved: {output}")

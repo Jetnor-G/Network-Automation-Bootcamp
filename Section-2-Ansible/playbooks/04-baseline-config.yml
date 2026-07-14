@@ -1,0 +1,88 @@
+---
+# Playbook 04 — Push baseline config: Banner MOTD, Logging, Domain, DNS, NTP
+#
+# Variables come from:  inventory/group_vars/all.yml
+# Template renders to:  templates/baseline.j2
+#
+# Dry run : ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml --check --diff
+# Apply   : ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml
+
+- name: Push Baseline Configuration to All Devices
+  hosts: network
+  gather_facts: false
+
+  tasks:
+
+    # ── Domain ────────────────────────────────────────────────────────────────
+    - name: Configure domain name
+      cisco.ios.ios_system:
+        domain_name: "{{ domain_name }}"
+        state: present
+
+    # ── DNS ───────────────────────────────────────────────────────────────────
+    - name: Configure DNS name servers
+      cisco.ios.ios_system:
+        name_servers: "{{ dns_servers }}"
+        state: present
+
+    # ── NTP ───────────────────────────────────────────────────────────────────
+    - name: Configure NTP servers
+      cisco.ios.ios_ntp_global:
+        config:
+          servers:
+            - server: "{{ item }}"
+              prefer: "{{ true if loop.index == 1 else false }}"
+        state: merged
+      loop: "{{ ntp_servers }}"
+      loop_control:
+        label: "{{ item }}"
+
+    # ── Logging ───────────────────────────────────────────────────────────────
+    - name: Configure logging
+      cisco.ios.ios_logging_global:
+        config:
+          hosts:
+            - hostname: "{{ syslog_server }}"
+          buffered:
+            size: "{{ logging_buffer_size }}"
+            severity: "{{ logging_severity }}"
+          trap: "{{ logging_severity }}"
+          console:
+            severity: critical
+        state: merged
+
+    - name: Enable timestamps on log and debug messages
+      cisco.ios.ios_config:
+        lines:
+          - service timestamps log datetime msec localtime show-timezone year
+          - service timestamps debug datetime msec localtime show-timezone year
+
+    # ── Banner MOTD ───────────────────────────────────────────────────────────
+    - name: Configure Banner MOTD
+      cisco.ios.ios_banner:
+        banner: motd
+        text: "{{ banner_motd }}"
+        state: present
+
+    # ── Save & Verify ─────────────────────────────────────────────────────────
+    - name: Save running config to startup
+      cisco.ios.ios_command:
+        commands: write memory
+
+    - name: Verify NTP associations
+      cisco.ios.ios_command:
+        commands: show ntp associations
+      register: ntp_out
+
+    - name: Verify logging config
+      cisco.ios.ios_command:
+        commands: show logging
+      register: log_out
+
+    - name: Print NTP status
+      debug:
+        msg: "{{ ntp_out.stdout_lines }}"
+
+    - name: Print logging status
+      debug:
+        msg: "{{ log_out.stdout_lines }}"

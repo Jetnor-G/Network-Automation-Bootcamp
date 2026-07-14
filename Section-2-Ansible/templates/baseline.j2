@@ -1,0 +1,26 @@
+! ── Domain ───────────────────────────────────────────────────────────────────
+ip domain-name {{ domain_name }}
+!
+! ── DNS Name Servers ─────────────────────────────────────────────────────────
+{% for ns in dns_servers %}
+ip name-server {{ ns }}
+{% endfor %}
+!
+! ── NTP Servers ──────────────────────────────────────────────────────────────
+{% for ntp in ntp_servers %}
+ntp server {{ ntp }}
+{% endfor %}
+ntp update-calendar
+!
+! ── Logging ──────────────────────────────────────────────────────────────────
+no logging console
+logging buffered {{ logging_buffer_size }} {{ logging_severity }}
+logging host {{ syslog_server }}
+logging trap {{ logging_severity }}
+service timestamps log datetime msec localtime show-timezone year
+service timestamps debug datetime msec localtime show-timezone year
+!
+! ── Banner MOTD ──────────────────────────────────────────────────────────────
+banner motd ^
+{{ banner_motd }}^
+!

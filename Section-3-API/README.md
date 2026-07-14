@@ -2,160 +2,215 @@
 
 ## Objective
 
-Interact with network devices and management platforms programmatically using **REST** and **RESTCONF** APIs. By the end of this section you will query device state, push configuration, and pull inventory from a management platform — all via Python and HTTP.
+Query and configure network infrastructure via REST APIs. This section uses **NetBox** as the local source of truth, a **Cisco DevNet Always-On** sandbox for RESTCONF practice, and several **free public APIs** for real-world data exploration — no account or credit card required.
 
 ---
 
-## Why APIs for Network Automation?
+## API Sources Used in This Lab
 
-| CLI / SSH | REST API |
-|-----------|---------|
-| Scrape unstructured text | Structured JSON / XML responses |
-| Hard to integrate with other tools | Standard HTTP — works with anything |
-| No built-in authentication model | Token / OAuth / API keys |
-| Vendor-specific commands | Platform-agnostic interfaces |
+### Local (Lab Network)
 
----
+| Service | URL | Auth | What You Do |
+|---------|-----|------|-------------|
+| NetBox | `http://10.100.100.25:8000/api/` | Token (given at start) | Query devices, prefixes, add records |
+| Router-1 (RESTCONF) | `https://10.106.106.61/restconf/` | Basic auth | Push/pull interface config |
 
-## API Types Covered
+### Free Public APIs (no setup, no account)
 
-| Type | Protocol | Port | Format | Used With |
-|------|----------|------|--------|-----------|
-| REST | HTTP/HTTPS | 80/443 | JSON | NMS, NetBox, Cisco DNA |
-| RESTCONF | HTTPS | 443 | JSON/XML | IOS-XE, NX-OS |
-| NETCONF | SSH | 830 | XML | IOS-XE, Junos, NX-OS |
+| Service | Base URL | Auth Needed | What You Explore |
+|---------|----------|------------|-----------------|
+| **Cisco DevNet Always-On IOS-XE** | `https://sandbox-iosxe-latest-1.cisco.com` | Basic (devnetuser / Cisco123!) | RESTCONF on a real IOS-XE router |
+| **BGPView** | `https://api.bgpview.io` | None | ASN info, BGP prefix lookups, peer data |
+| **PeeringDB** | `https://www.peeringdb.com/api/` | None (read) | Internet exchanges, network records |
+| **ipinfo.io** | `https://ipinfo.io` | None (50 k/mo free) | IP geolocation, ASN, org name |
+| **httpbin.org** | `https://httpbin.org` | None | Practice all HTTP methods safely |
 
 ---
 
 ## Lab Scripts
 
-### Script 1 — REST GET: Query Interface Status
-
-```bash
-python3 scripts/01_rest_get_interfaces.py
-```
-
-Queries `http://10.0.0.1/restconf/data/ietf-interfaces:interfaces` and prints a
-formatted table of interface names, status, and IP addresses.
+| Script | Method | What It Does |
+|--------|-------------|
+| `01_netbox_get_devices.py` | REST | Query all active devices from local NetBox |
+| `02_restconf_push_config.py` | RESTCONF | Push interface config to Router-1 |
+| `03_bgpview_lookup.py` | REST (public) | BGPView — ASN / prefix lookups |
+| `04_devnet_sandbox.py` | RESTCONF | Cisco DevNet Always-On IOS-XE sandbox |
+| `05_push_baseline_ssh.py` | SSH (Netmiko) | Push banner, logging, domain, DNS, NTP via CLI |
+| `06_push_baseline_restconf.py` | RESTCONF | Push same baseline via YANG/RESTCONF |
 
 ---
 
-### Script 2 — RESTCONF PUT: Push Interface Config
+## Exercise 5 — SSH: Push Baseline Config with Netmiko
+
+```bash
+python3 scripts/05_push_baseline_ssh.py
+```
+
+Connects to all three lab devices over SSH using **Netmiko** and pushes:
+- `ip domain-name` + `ip name-server` (Domain & DNS)
+- `ntp server` (NTP)
+- `logging host` + `logging buffered` + `service timestamps` (Logging)
+- `banner motd` (Banner)
+
+The script prints the full command list, asks for confirmation, then applies and verifies.
+
+**Key concepts:** Netmiko `ConnectHandler`, `send_config_set()`, `save_config()`, error handling.
+
+---
+
+## Exercise 6 — RESTCONF: Push Baseline Config with Python
+
+```bash
+python3 scripts/06_push_baseline_restconf.py
+```
+
+Pushes the exact same baseline using **RESTCONF PATCH/PUT** requests with IOS-XE YANG models:
+
+| Config Block | YANG Path |
+|---|---|
+| Domain | `Cisco-IOS-XE-native:native/ip/domain` |
+| DNS | `Cisco-IOS-XE-native:native/ip/name-server` |
+| NTP | `Cisco-IOS-XE-native:native/ntp` |
+| Logging | `Cisco-IOS-XE-native:native/logging` |
+| Timestamps | `Cisco-IOS-XE-native:native/service/timestamps` |
+| Banner MOTD | `Cisco-IOS-XE-native:native/banner` |
+
+After pushing, the script runs a GET on each path and prints the confirmation.
+
+**Key concepts:** YANG data models, PATCH vs PUT, structured JSON payloads, read-back verification.
+
+---
+
+## SSH vs RESTCONF — Side-by-Side Comparison
+
+| Aspect | SSH / Netmiko (Script 05) | RESTCONF (Script 06) |
+|--------|--------------------------|---------------------|
+| Protocol | SSH (port 22) | HTTPS (port 443) |
+| Data format | CLI text commands | Structured JSON |
+| Works on | Any IOS device | IOS-XE ≥ 16.6 only |
+| Error detection | Parse text output | HTTP status codes |
+| Idempotent | No (re-applies always) | Yes (PUT/PATCH) |
+| Best for | Legacy devices | Modern/API-ready devices |
+
+---
+
+## Exercise 1 — NetBox: Query Your Devices
+
+```bash
+python3 scripts/01_netbox_get_devices.py
+```
+
+Fetches all active devices from NetBox and prints a table. Then extend the script to **add a new device** via POST.
+
+**Key concepts:** API tokens, pagination, filtering with query params.
+
+---
+
+## Exercise 2 — RESTCONF: Push Interface Config
 
 ```bash
 python3 scripts/02_restconf_push_config.py
 ```
 
-Pushes a JSON payload to configure `GigabitEthernet0/1` description and IP
-address via RESTCONF on an IOS-XE device.
+Uses RESTCONF (RFC 8040) to configure `GigabitEthernet0/1` on Router-1 with a description and IP address.
+
+**Key concepts:** YANG data models, HTTP PUT, `application/yang-data+json`.
 
 ---
 
-### Script 3 — NetBox Inventory: Build Dynamic Ansible Inventory
+## Exercise 3 — BGPView: Real-World Routing Data
 
 ```bash
-python3 scripts/03_netbox_inventory.py
+python3 scripts/03_bgpview_lookup.py
 ```
 
-Pulls all active devices from a NetBox instance and outputs an Ansible-compatible
-JSON inventory grouped by device role.
+Looks up BGP routing information for a given ASN or IP prefix. Try it with your ISP's ASN.
+
+**Key concepts:** No-auth public API, JSON parsing, nested data structures.
 
 ---
 
-## Key Python Libraries
+## Exercise 4 — Cisco DevNet Sandbox
 
-| Library | Install | Purpose |
-|---------|---------|---------|
-| `requests` | `pip install requests` | HTTP client for REST APIs |
-| `netmiko` | `pip install netmiko` | SSH to network devices |
-| `napalm` | `pip install napalm` | Multi-vendor device abstraction |
-| `ncclient` | `pip install ncclient` | NETCONF client |
-| `pynetbox` | `pip install pynetbox` | NetBox API wrapper |
+```bash
+python3 scripts/04_devnet_sandbox.py
+```
+
+Connects to Cisco's **always-on, free** IOS-XE sandbox and queries its interfaces via RESTCONF.
+Credentials: `devnetuser` / `Cisco123!` (Cisco-provided, public).
+
+**Key concepts:** Public sandboxes, RESTCONF on real hardware, TLS verification.
 
 ---
 
 ## RESTCONF Quick Reference
 
-### Base URL
-```
-https://<device-ip>/restconf/data/
-```
+**Base URL:** `https://<device>/restconf/data/`
 
-### Headers Required
-```http
+**Required Headers:**
+```
 Content-Type: application/yang-data+json
-Accept: application/yang-data+json
+Accept:       application/yang-data+json
 ```
 
-### Common Operations
-
-| HTTP Method | RESTCONF Action | Example Path |
-|-------------|----------------|-------------|
-| GET | Read config/state | `/restconf/data/ietf-interfaces:interfaces` |
-| PUT | Replace resource | `/restconf/data/ietf-interfaces:interfaces/interface=Gi0%2F1` |
-| PATCH | Merge/update resource | same as PUT path |
-| POST | Create new resource | `/restconf/data/ietf-interfaces:interfaces` |
-| DELETE | Remove resource | `/restconf/data/ietf-interfaces:interfaces/interface=Gi0%2F1` |
+| HTTP Method | Action | When to Use |
+|-------------|--------|------------|
+| GET | Read config or state | Show interfaces, routes |
+| PUT | Replace a resource | Set interface config |
+| PATCH | Update part of a resource | Change description only |
+| POST | Create a new resource | Add a new VLAN |
+| DELETE | Remove a resource | Remove an interface config |
 
 ---
 
-## Authentication Methods
+## Authentication Patterns
 
 ```python
 import requests
 from requests.auth import HTTPBasicAuth
 
-# Basic auth (IOS-XE RESTCONF)
+# Basic auth — IOS-XE RESTCONF
 resp = requests.get(url, auth=HTTPBasicAuth("admin", "Lab@1234"), verify=False)
 
-# Token auth (NetBox, Cisco DNA Center)
-headers = {"Authorization": "Token abc123yourtokenhere"}
+# Token auth — NetBox
+headers = {"Authorization": "Token <your-token>"}
 resp = requests.get(url, headers=headers)
+
+# No auth — BGPView, PeeringDB, ipinfo.io
+resp = requests.get("https://api.bgpview.io/asn/13335")
 ```
 
 ---
 
-## Sample JSON Payloads
+## Student Tip — Explore APIs Interactively
 
-### GET Response — Interface List
-```json
-{
-  "ietf-interfaces:interfaces": {
-    "interface": [
-      {
-        "name": "GigabitEthernet0/0",
-        "description": "WAN_UPLINK",
-        "enabled": true,
-        "ietf-ip:ipv4": {
-          "address": [{ "ip": "203.0.113.1", "prefix-length": 30 }]
-        }
-      }
-    ]
-  }
-}
-```
+Before writing a script, explore endpoints in your browser or with `curl`:
 
-### PUT Payload — Configure Interface
-```json
-{
-  "ietf-interfaces:interface": {
-    "name": "GigabitEthernet0/1",
-    "description": "LAN_SEGMENT_UPDATED",
-    "type": "iana-if-type:ethernetCsmacd",
-    "enabled": true,
-    "ietf-ip:ipv4": {
-      "address": [{ "ip": "10.0.0.1", "prefix-length": 24 }]
-    }
-  }
-}
+```bash
+# BGPView — lookup Cloudflare's ASN
+curl https://api.bgpview.io/asn/13335 | python3 -m json.tool
+
+# ipinfo — lookup your public IP
+curl https://ipinfo.io
+
+# PeeringDB — find an Internet Exchange
+curl "https://www.peeringdb.com/api/ix?name=AMS-IX" | python3 -m json.tool
+
+# httpbin — test a POST request
+curl -X POST https://httpbin.org/post -H "Content-Type: application/json" \
+     -d '{"device": "router1", "action": "backup"}'
 ```
 
 ---
 
 ## Completion Criteria
 
-- [ ] Script 1 successfully queries and prints interface data
-- [ ] Script 2 applies a config change via RESTCONF PUT
-- [ ] Script 3 generates an Ansible-compatible inventory from NetBox
-- [ ] All scripts handle HTTP errors gracefully (try/except)
-- [ ] At least one API call uses token-based authentication
+- [ ] Script 1 queries NetBox and prints at least 3 devices
+- [ ] Script 1 extended to POST a new device via API
+- [ ] Script 2 applies interface config via RESTCONF PUT
+- [ ] Script 3 looks up at least one real ASN and parses the JSON
+- [ ] Script 4 queries the DevNet sandbox interfaces
+- [ ] Script 5 (SSH) pushes banner, logging, domain, DNS, NTP to all devices
+- [ ] Script 6 (RESTCONF) pushes same baseline and reads back each YANG path to verify
+- [ ] Compare outputs of scripts 5 and 6 — same result, different protocol
+- [ ] All scripts have try/except for connection and HTTP errors
