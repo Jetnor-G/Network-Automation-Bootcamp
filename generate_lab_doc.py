@@ -177,7 +177,7 @@ code(
 "       │                     │               │\n"
 "  ROUTER-1              ROUTER-2        SWITCH-1\n"
 "  10.106.106.61          10.106.106.62   10.106.106.63\n"
-"  IOS-XE                 NX-OS           IOS  VLANs\n"
+"  NX-OS                  NX-OS           IOS  VLANs\n"
 "\n"
 "═══════════════════════════════════════════════════\n"
 "  STUDENT PODS  10.0.0.101 – 10.0.0.112  (×12)\n"
@@ -191,8 +191,8 @@ table(
         ["Control Node",     "10.106.106.60", "Automation engine (shared)"],
         ["NetBox",           "10.100.100.25", "IPAM / DCIM + REST API"],
         ["Gitea (Git Srv)",  "10.0.0.60",     "Repository server"],
-        ["Router-1",         "10.106.106.61", "IOS-XE lab router + RESTCONF"],
-        ["Router-2",         "10.106.106.62", "NX-OS secondary router"],
+        ["Router-1",         "10.106.106.61", "NX-OS core router (virtual Nexus)"],
+        ["Router-2",         "10.106.106.62", "NX-OS secondary router (virtual Nexus)"],
         ["Switch-1",         "10.106.106.63", "IOS access switch + VLANs"],
         ["Student Pod 01–12","10.0.0.101–112","Student workstations"],
     ],
@@ -284,9 +284,9 @@ heading("4.1 Lab Devices", 2, (0x2E, 0x74, 0xB5))
 table(
     ["Host", "IP", "OS", "Role"],
     [
-        ["router1", "10.106.106.61",  "IOS-XE", "Core router / OSPF / RESTCONF"],
-        ["router2", "10.106.106.62",  "NX-OS",  "Secondary router"],
-        ["switch1", "10.106.106.63", "IOS",    "Access switch / VLANs"],
+        ["router1", "10.106.106.61",  "NX-OS", "Core router / OSPF (no enable needed)"],
+        ["router2", "10.106.106.62",  "NX-OS",  "Secondary router (no enable needed)"],
+        ["switch1", "10.106.106.63", "IOS",    "Access switch / VLANs (needs enable)"],
     ],
     [1.2, 1.2, 1.0, 3.0]
 )
@@ -307,8 +307,17 @@ code(
 "[network:vars]\n"
 "ansible_user=admin\n"
 "ansible_password=Lab@1234\n"
+"ansible_connection=network_cli\n"
+"\n"
+"# Routers are NX-OS and skip enable; switch is IOS and needs it\n"
+"[routers:vars]\n"
+"ansible_network_os=nxos\n"
+"ansible_become=no\n"
+"\n"
+"[switches:vars]\n"
 "ansible_network_os=ios\n"
-"ansible_connection=network_cli"
+"ansible_become=yes\n"
+"ansible_become_method=enable"
 )
 
 heading("4.3 Playbook 1 — Gather Facts", 2, (0x2E, 0x74, 0xB5))

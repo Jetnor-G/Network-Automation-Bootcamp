@@ -4,6 +4,10 @@ Script 05 — Push baseline config via SSH using Netmiko.
 Configures: Banner MOTD, Logging, Domain, DNS, NTP
 on all devices defined in DEVICES.
 
+Router-1 / Router-2 are virtual Nexus (NX-OS, no enable needed).
+Switch-1 is virtual IOS (needs enable). Command syntax differs per
+platform, so commands are built separately for each device_type.
+
 Usage: python3 05_push_baseline_ssh.py
 Requires: pip install netmiko
 """
@@ -17,6 +21,7 @@ NTP_SERVERS      = ["216.239.35.0", "216.239.35.4"]
 SYSLOG_SERVER    = "10.106.106.60"
 LOG_BUFFER_SIZE  = 16384
 LOG_SEVERITY     = "informational"
+LOG_SEVERITY_NUM = 6  # NX-OS logging commands take a numeric severity (0-7)
 BANNER_TEXT      = (
     "******************************************************************\n"
     "*   AUTHORIZED ACCESS ONLY — Network Automation Bootcamp Lab     *\n"
@@ -27,28 +32,23 @@ BANNER_TEXT      = (
 
 # ── Devices ───────────────────────────────────────────────────────────────────
 DEVICES = [
-    {"device_type": "cisco_ios",  "host": "10.106.106.61", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
-    {"device_type": "cisco_ios",  "host": "10.106.106.62", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
+    {"device_type": "cisco_nxos", "host": "10.106.106.61", "username": "admin", "password": "Lab@1234"},
+    {"device_type": "cisco_nxos", "host": "10.106.106.62", "username": "admin", "password": "Lab@1234"},
     {"device_type": "cisco_ios",  "host": "10.106.106.63", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
 ]
 
 
-def build_config_commands():
-    """Return a flat list of IOS config commands for the baseline."""
+def build_ios_commands():
+    """Return a flat list of classic IOS config commands for the baseline."""
     commands = []
 
-    # Domain
     commands += [f"ip domain-name {DOMAIN_NAME}"]
-
-    # DNS
     commands += [f"ip name-server {ns}" for ns in DNS_SERVERS]
 
-    # NTP (first server is preferred)
     commands += [f"ntp server {NTP_SERVERS[0]} prefer"]
     commands += [f"ntp server {s}" for s in NTP_SERVERS[1:]]
     commands += ["ntp update-calendar"]
 
-    # Logging
     commands += [
         "no logging console",
         f"logging buffered {LOG_BUFFER_SIZE} {LOG_SEVERITY}",
@@ -58,28 +58,61 @@ def build_config_commands():
         "service timestamps debug datetime msec localtime show-timezone year",
     ]
 
-    # Banner MOTD  (^ as delimiter — cannot appear in banner text)
     commands += [f"banner motd ^\n{BANNER_TEXT}\n^"]
 
     return commands
 
 
+def build_nxos_commands():
+    """Return a flat list of NX-OS config commands for the baseline.
+
+    NX-OS has no "write memory", no "service timestamps", and uses
+    "logging server" / "logging logfile" instead of IOS's
+    "logging host" / "logging buffered".
+    """
+    commands = []
+
+    commands += [f"ip domain-name {DOMAIN_NAME}"]
+    commands += [f"ip name-server {ns}" for ns in DNS_SERVERS]
+
+    commands += [f"ntp server {NTP_SERVERS[0]} prefer"]
+    commands += [f"ntp server {s}" for s in NTP_SERVERS[1:]]
+
+    commands += [
+        "no logging console",
+        "logging timestamp milliseconds",
+        f"logging logfile messages {LOG_SEVERITY_NUM} size {LOG_BUFFER_SIZE}",
+        f"logging server {SYSLOG_SERVER} {LOG_SEVERITY_NUM}",
+    ]
+
+    commands += [f"banner motd ^\n{BANNER_TEXT}\n^"]
+
+    return commands
+
+
+def build_config_commands(device_type):
+    return build_ios_commands() if device_type == "cisco_ios" else build_nxos_commands()
+
+
 def push_to_device(device):
-    host = device["host"]
-    print(f"\n[*] Connecting to {host} ...")
+    host        = device["host"]
+    device_type = device["device_type"]
+    print(f"\n[*] Connecting to {host} ({device_type}) ...")
     try:
         conn = ConnectHandler(**device)
-        conn.enable()
+        if device_type == "cisco_ios":
+            conn.enable()
 
-        commands = build_config_commands()
+        commands = build_config_commands(device_type)
         output   = conn.send_config_set(commands, cmd_verify=False)
         conn.save_config()
 
         print(f"[+] {host} — config applied and saved.")
 
         # Verify key items
-        ntp_out = conn.send_command("show ntp associations")
-        log_out = conn.send_command("show logging | include Syslog|Trap|Buffer")
+        ntp_cmd = "show ntp associations" if device_type == "cisco_ios" else "show ntp peer-status"
+        ntp_out = conn.send_command(ntp_cmd)
+        log_out = conn.send_command("show logging")
         print(f"    NTP  : {ntp_out.splitlines()[0] if ntp_out.strip() else 'no associations yet'}")
         print(f"    Log  : {log_out.splitlines()[0] if log_out.strip() else 'no log output'}")
 
@@ -92,12 +125,13 @@ def push_to_device(device):
 
 
 def main():
-    commands = build_config_commands()
     print("=" * 60)
     print("Baseline config commands to be pushed:")
     print("=" * 60)
-    for cmd in commands:
-        print(f"  {cmd}")
+    for device in DEVICES:
+        print(f"\n{device['host']} ({device['device_type']}):")
+        for cmd in build_config_commands(device["device_type"]):
+            print(f"  {cmd}")
     print("=" * 60)
 
     confirm = input("\nApply to all devices? [y/N]: ").strip().lower()

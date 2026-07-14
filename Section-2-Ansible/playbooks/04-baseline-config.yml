@@ -4,6 +4,10 @@
 # Variables come from:  inventory/group_vars/all.yml
 # Template renders to:  templates/baseline.j2
 #
+# Router-1 / Router-2 are virtual Nexus (NX-OS); Switch-1 is virtual IOS.
+# Each config block below is split per platform since the resource modules
+# and some CLI (logging, save) differ between cisco.nxos and cisco.ios.
+#
 # Dry run : ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml --check --diff
 # Apply   : ansible-playbook -i inventory/hosts.ini playbooks/04-baseline-config.yml
 
@@ -11,22 +15,47 @@
   hosts: network
   gather_facts: false
 
+  vars:
+    is_router: "{{ inventory_hostname in groups['routers'] }}"
+
   tasks:
 
-    # ── Domain ────────────────────────────────────────────────────────────────
-    - name: Configure domain name
+    # ── Domain & DNS (NX-OS routers) ─────────────────────────────────────────
+    - name: Configure domain name and DNS (NX-OS)
+      cisco.nxos.nxos_system:
+        domain_name: ["{{ domain_name }}"]
+        name_servers: "{{ dns_servers }}"
+        state: present
+      when: is_router
+
+    # ── Domain (IOS switch) ──────────────────────────────────────────────────
+    - name: Configure domain name (IOS)
       cisco.ios.ios_system:
         domain_name: "{{ domain_name }}"
         state: present
+      when: not is_router
 
-    # ── DNS ───────────────────────────────────────────────────────────────────
-    - name: Configure DNS name servers
+    # ── DNS (IOS switch) ─────────────────────────────────────────────────────
+    - name: Configure DNS name servers (IOS)
       cisco.ios.ios_system:
         name_servers: "{{ dns_servers }}"
         state: present
+      when: not is_router
 
     # ── NTP ───────────────────────────────────────────────────────────────────
-    - name: Configure NTP servers
+    - name: Configure NTP servers (NX-OS)
+      cisco.nxos.nxos_ntp_global:
+        config:
+          servers:
+            - server: "{{ item }}"
+              prefer: "{{ true if loop.index == 1 else false }}"
+        state: merged
+      loop: "{{ ntp_servers }}"
+      loop_control:
+        label: "{{ item }}"
+      when: is_router
+
+    - name: Configure NTP servers (IOS)
       cisco.ios.ios_ntp_global:
         config:
           servers:
@@ -36,9 +65,30 @@
       loop: "{{ ntp_servers }}"
       loop_control:
         label: "{{ item }}"
+      when: not is_router
 
     # ── Logging ───────────────────────────────────────────────────────────────
-    - name: Configure logging
+    - name: Configure logging (NX-OS)
+      # NX-OS has no in-memory "buffered" log or "service timestamps" command —
+      # logfile is the closest equivalent, and timestamp format is its own key.
+      cisco.nxos.nxos_logging_global:
+        config:
+          hosts:
+            - host: "{{ syslog_server }}"
+              severity: "{{ logging_severity }}"
+          logfile:
+            name: messages
+            severity: "{{ logging_severity }}"
+            size: "{{ logging_buffer_size }}"
+            state: enabled
+          console:
+            severity: critical
+            state: enabled
+          timestamp: milliseconds
+        state: merged
+      when: is_router
+
+    - name: Configure logging (IOS)
       cisco.ios.ios_logging_global:
         config:
           hosts:
@@ -50,39 +100,70 @@
           console:
             severity: critical
         state: merged
+      when: not is_router
 
-    - name: Enable timestamps on log and debug messages
+    - name: Enable timestamps on log and debug messages (IOS)
       cisco.ios.ios_config:
         lines:
           - service timestamps log datetime msec localtime show-timezone year
           - service timestamps debug datetime msec localtime show-timezone year
+      when: not is_router
 
     # ── Banner MOTD ───────────────────────────────────────────────────────────
-    - name: Configure Banner MOTD
+    - name: Configure Banner MOTD (NX-OS)
+      cisco.nxos.nxos_banner:
+        banner: motd
+        text: "{{ banner_motd }}"
+        state: present
+      when: is_router
+
+    - name: Configure Banner MOTD (IOS)
       cisco.ios.ios_banner:
         banner: motd
         text: "{{ banner_motd }}"
         state: present
+      when: not is_router
 
     # ── Save & Verify ─────────────────────────────────────────────────────────
-    - name: Save running config to startup
+    - name: Save running config to startup (NX-OS)
+      cisco.nxos.nxos_command:
+        # NX-OS has no "write memory" — the save command is copy run/start
+        commands: copy running-config startup-config
+      when: is_router
+
+    - name: Save running config to startup (IOS)
       cisco.ios.ios_command:
         commands: write memory
+      when: not is_router
 
-    - name: Verify NTP associations
+    - name: Verify NTP status (NX-OS)
+      cisco.nxos.nxos_command:
+        commands: show ntp peer-status
+      register: ntp_out_nxos
+      when: is_router
+
+    - name: Verify NTP associations (IOS)
       cisco.ios.ios_command:
         commands: show ntp associations
-      register: ntp_out
+      register: ntp_out_ios
+      when: not is_router
 
-    - name: Verify logging config
+    - name: Verify logging config (NX-OS)
+      cisco.nxos.nxos_command:
+        commands: show logging
+      register: log_out_nxos
+      when: is_router
+
+    - name: Verify logging config (IOS)
       cisco.ios.ios_command:
         commands: show logging
-      register: log_out
+      register: log_out_ios
+      when: not is_router
 
     - name: Print NTP status
       debug:
-        msg: "{{ ntp_out.stdout_lines }}"
+        msg: "{{ (ntp_out_nxos if is_router else ntp_out_ios).stdout_lines }}"
 
     - name: Print logging status
       debug:
-        msg: "{{ log_out.stdout_lines }}"
+        msg: "{{ (log_out_nxos if is_router else log_out_ios).stdout_lines }}"

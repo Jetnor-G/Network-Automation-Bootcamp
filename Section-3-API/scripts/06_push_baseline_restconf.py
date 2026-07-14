@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-Script 06 — Push baseline config via RESTCONF (IOS-XE YANG models).
+Script 06 — Push baseline config via RESTCONF (IOS-XE native YANG models).
 Configures: Banner MOTD, Logging, Domain, DNS, NTP
-Target: Router-1 (IOS-XE with RESTCONF enabled)
+
+NOTE: Router-1 is virtual Nexus (NX-OS), not IOS-XE. NX-OS RESTCONF (where
+available) uses different YANG models than the Cisco-IOS-XE-native ones
+below, so this script will NOT work against Router-1 or Router-2 as-is.
+Classic IOS (Switch-1) has no RESTCONF support at all. There is currently
+no lab device these Cisco-IOS-XE-native payloads apply to — for a working
+RESTCONF/IOS-XE example, see 04_devnet_sandbox.py, which targets Cisco's
+free always-on IOS-XE sandbox.
 
 Usage: python3 06_push_baseline_restconf.py
 Requires: pip install requests

@@ -9,37 +9,65 @@
   vars:
     report_dir: "./reports"
     compliance_results: []
+    is_router: "{{ inventory_hostname in groups['routers'] }}"
 
   tasks:
-    - name: Check SSH version 2
+    - name: Check SSH server status (NX-OS routers)
+      cisco.nxos.nxos_command:
+        commands: show ssh server
+      register: ssh_output_nxos
+      when: is_router
+
+    - name: Check SSH version 2 (IOS switch)
       cisco.ios.ios_command:
         commands: show ip ssh
-      register: ssh_output
+      register: ssh_output_ios
+      when: not is_router
+
+    - name: Evaluate SSH v2 compliance
+      set_fact:
+        ssh_ok: >-
+          {{ ('version 2' in ssh_output_nxos.stdout[0] and 'enabled' in ssh_output_nxos.stdout[0])
+             if is_router
+             else ('SSH Enabled - version 2.0' in ssh_output_ios.stdout[0]) }}
 
     - name: Assert SSH v2 is enabled
       assert:
         that:
-          - "'SSH Enabled - version 2.0' in ssh_output.stdout[0]"
+          - ssh_ok
         success_msg: "[PASS] SSH v2 enabled on {{ inventory_hostname }}"
         fail_msg:    "[FAIL] SSH v2 NOT enabled on {{ inventory_hostname }}"
 
-    - name: Check NTP associations
+    - name: Check NTP peer status (NX-OS routers)
+      cisco.nxos.nxos_command:
+        commands: show ntp peer-status
+      register: ntp_output_nxos
+      when: is_router
+
+    - name: Check NTP associations (IOS switch)
       cisco.ios.ios_command:
         commands: show ntp associations
-      register: ntp_output
+      register: ntp_output_ios
+      when: not is_router
+
+    - name: Evaluate NTP compliance
+      set_fact:
+        ntp_ok: >-
+          {{ (ntp_output_nxos.stdout[0] | length > 0) if is_router
+             else (ntp_output_ios.stdout[0] | length > 0) }}
 
     - name: Assert NTP is configured
       assert:
         that:
-          - "ntp_output.stdout[0] | length > 0"
+          - ntp_ok
         success_msg: "[PASS] NTP configured on {{ inventory_hostname }}"
         fail_msg:    "[FAIL] NTP NOT configured on {{ inventory_hostname }}"
 
     - name: Check ip routing (routers only)
-      cisco.ios.ios_command:
+      cisco.nxos.nxos_command:
         commands: show ip route summary
       register: routing_output
-      when: inventory_hostname in groups['routers']
+      when: is_router
 
     - name: Save compliance report
       copy:
@@ -47,7 +75,7 @@
           Compliance Report — {{ inventory_hostname }}
           Generated: {{ ansible_date_time.iso8601 | default('N/A') }}
           ============================================
-          SSH v2  : {{ 'PASS' if 'version 2.0' in ssh_output.stdout[0] else 'FAIL' }}
-          NTP     : {{ 'PASS' if ntp_output.stdout[0] | length > 0 else 'FAIL' }}
+          SSH v2  : {{ 'PASS' if ssh_ok else 'FAIL' }}
+          NTP     : {{ 'PASS' if ntp_ok else 'FAIL' }}
         dest: "{{ report_dir }}/{{ inventory_hostname }}_compliance.txt"
       delegate_to: localhost
