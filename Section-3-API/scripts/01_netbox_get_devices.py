@@ -7,7 +7,7 @@ Usage: python3 01_netbox_get_devices.py
 import sys
 import requests
 
-NETBOX_URL   = "http://10.0.0.100:8000"
+NETBOX_URL   = "http://10.100.100.25:8000"
 NETBOX_TOKEN = "your_netbox_token_here"          # given at lab start
 
 HEADERS = {

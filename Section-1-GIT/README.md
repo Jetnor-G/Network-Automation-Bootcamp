@@ -140,7 +140,7 @@ Each device config file tracks the full baseline. Key sections students will pus
 | Domain | `ip domain-name lab.example.com` | Required for SSH key generation |
 | DNS | `ip name-server 8.8.8.8` | Hostname resolution |
 | NTP | `ntp server 216.239.35.0 prefer` | Accurate log timestamps |
-| Logging | `logging host 10.0.0.50` | Centralised syslog |
+| Logging | `logging host 10.106.106.60` | Centralised syslog |
 | Log timestamps | `service timestamps log datetime msec localtime` | Human-readable logs |
 | Banner MOTD | `banner motd ^...^` | Legal access notice |
 

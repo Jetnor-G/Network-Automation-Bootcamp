@@ -138,9 +138,10 @@ table(
 
 heading("2. Lab Architecture & Topology")
 doc.add_paragraph(
-    "The lab is divided into three networks: the classroom management network (10.0.0.0/24) "
-    "where students, the control node, NetBox, and the Git server live; the device network "
-    "(10.0.1.0/24) for the routers and switch; and the internet for free public API access."
+    "The lab spans three networks: the classroom management network (10.0.0.0/24) where "
+    "students and the Git server live; the automation & device network (10.106.106.0/24) "
+    "where the control node and the routers/switch live; NetBox on its own network "
+    "(10.100.100.0/24); and the internet for free public API access."
 )
 
 code(
@@ -159,21 +160,24 @@ code(
 "         MGMT NETWORK  10.0.0.0/24\n"
 "═════════════════════════════╪══════════════════════════\n"
 "                             │\n"
-"        ┌────────────────────┼───────────────┐\n"
-"        │                    │               │\n"
-" CONTROL NODE          NETBOX           GIT SERVER\n"
-" 10.0.0.50             10.0.0.100       10.0.0.60\n"
-" Git/Ansible/Python    :8000 (IPAM)     (Gitea)\n"
-"        │                    │\n"
-"        └──────────┬─────────┘\n"
-"                   │ SSH / RESTCONF / Ansible\n"
-"═══════════════════╪══════════════════════════════\n"
-"         DEVICE NETWORK  10.0.1.0/24\n"
-"═══════════════════╪══════════════════════════════\n"
-"       ┌───────────┼──────────────┐\n"
-"  ROUTER-1    ROUTER-2       SWITCH-1\n"
-"  10.0.1.1    10.0.1.2       10.0.1.10\n"
-"  IOS-XE      NX-OS          IOS  VLANs\n"
+"                        GIT SERVER            NETBOX\n"
+"                        10.0.0.60          10.100.100.25\n"
+"                        (Gitea)              :8000 (IPAM)\n"
+"                             │                    │\n"
+"═════════════════════════════╪════════════════════╪══════\n"
+"     AUTOMATION & DEVICE NETWORK  10.106.106.0/24\n"
+"═════════════════════════════╪════════════════════╪══════\n"
+"                             │                    │\n"
+"                       CONTROL NODE ◄── REST API ──┘\n"
+"                       10.106.106.60\n"
+"                       Git/Ansible/Python\n"
+"                             │\n"
+"                             │ SSH / RESTCONF / Ansible\n"
+"       ┌─────────────────────┼───────────────┐\n"
+"       │                     │               │\n"
+"  ROUTER-1              ROUTER-2        SWITCH-1\n"
+"  10.106.106.61          10.106.106.62   10.106.106.63\n"
+"  IOS-XE                 NX-OS           IOS  VLANs\n"
 "\n"
 "═══════════════════════════════════════════════════\n"
 "  STUDENT PODS  10.0.0.101 – 10.0.0.112  (×12)\n"
@@ -184,12 +188,12 @@ heading("2.1 IP Address Plan", 2, (0x2E, 0x74, 0xB5))
 table(
     ["Device / Host", "IP Address", "Role"],
     [
-        ["Control Node",     "10.0.0.50",     "Automation engine (shared)"],
-        ["NetBox",           "10.0.0.100",    "IPAM / DCIM + REST API"],
+        ["Control Node",     "10.106.106.60", "Automation engine (shared)"],
+        ["NetBox",           "10.100.100.25", "IPAM / DCIM + REST API"],
         ["Gitea (Git Srv)",  "10.0.0.60",     "Repository server"],
-        ["Router-1",         "10.0.1.1",      "IOS-XE lab router + RESTCONF"],
-        ["Router-2",         "10.0.1.2",      "NX-OS secondary router"],
-        ["Switch-1",         "10.0.1.10",     "IOS access switch + VLANs"],
+        ["Router-1",         "10.106.106.61", "IOS-XE lab router + RESTCONF"],
+        ["Router-2",         "10.106.106.62", "NX-OS secondary router"],
+        ["Switch-1",         "10.106.106.63", "IOS access switch + VLANs"],
         ["Student Pod 01–12","10.0.0.101–112","Student workstations"],
     ],
     [2.0, 1.5, 3.0]
@@ -280,9 +284,9 @@ heading("4.1 Lab Devices", 2, (0x2E, 0x74, 0xB5))
 table(
     ["Host", "IP", "OS", "Role"],
     [
-        ["router1", "10.0.1.1",  "IOS-XE", "Core router / OSPF / RESTCONF"],
-        ["router2", "10.0.1.2",  "NX-OS",  "Secondary router"],
-        ["switch1", "10.0.1.10", "IOS",    "Access switch / VLANs"],
+        ["router1", "10.106.106.61",  "IOS-XE", "Core router / OSPF / RESTCONF"],
+        ["router2", "10.106.106.62",  "NX-OS",  "Secondary router"],
+        ["switch1", "10.106.106.63", "IOS",    "Access switch / VLANs"],
     ],
     [1.2, 1.2, 1.0, 3.0]
 )
@@ -290,11 +294,11 @@ table(
 heading("4.2 Inventory File (hosts.ini)", 2, (0x2E, 0x74, 0xB5))
 code(
 "[routers]\n"
-"router1 ansible_host=10.0.1.1\n"
-"router2 ansible_host=10.0.1.2\n"
+"router1 ansible_host=10.106.106.61\n"
+"router2 ansible_host=10.106.106.62\n"
 "\n"
 "[switches]\n"
-"switch1 ansible_host=10.0.1.10\n"
+"switch1 ansible_host=10.106.106.63\n"
 "\n"
 "[network:children]\n"
 "routers\n"
@@ -346,7 +350,7 @@ doc.add_paragraph(
     "Students then extend the script to POST a new device via the API."
 )
 code(
-"NETBOX_URL   = 'http://10.0.0.100:8000'\n"
+"NETBOX_URL   = 'http://10.100.100.25:8000'\n"
 "NETBOX_TOKEN = 'your_token_here'\n"
 "\n"
 "headers = {'Authorization': f'Token {NETBOX_TOKEN}'}\n"

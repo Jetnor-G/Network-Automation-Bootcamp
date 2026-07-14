@@ -12,8 +12,8 @@ Query and configure network infrastructure via REST APIs. This section uses **Ne
 
 | Service | URL | Auth | What You Do |
 |---------|-----|------|-------------|
-| NetBox | `http://10.0.0.100:8000/api/` | Token (given at start) | Query devices, prefixes, add records |
-| Router-1 (RESTCONF) | `https://10.0.1.1/restconf/` | Basic auth | Push/pull interface config |
+| NetBox | `http://10.100.100.25:8000/api/` | Token (given at start) | Query devices, prefixes, add records |
+| Router-1 (RESTCONF) | `https://10.106.106.61/restconf/` | Basic auth | Push/pull interface config |
 
 ### Free Public APIs (no setup, no account)
 

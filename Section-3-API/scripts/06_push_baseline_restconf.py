@@ -17,7 +17,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Target device ─────────────────────────────────────────────────────────────
-DEVICE_IP  = "10.0.1.1"
+DEVICE_IP  = "10.106.106.61"
 USERNAME   = "admin"
 PASSWORD   = "Lab@1234"
 BASE_URL   = f"https://{DEVICE_IP}/restconf/data"
@@ -32,7 +32,7 @@ HEADERS = {
 DOMAIN_NAME      = "lab.example.com"
 DNS_SERVERS      = ["8.8.8.8", "8.8.4.4"]
 NTP_SERVERS      = ["216.239.35.0", "216.239.35.4"]
-SYSLOG_SERVER    = "10.0.0.50"
+SYSLOG_SERVER    = "10.106.106.60"
 LOG_BUFFER_SIZE  = 16384
 BANNER_TEXT      = (
     "******************************************************************\n"

@@ -10,9 +10,9 @@ Use **Ansible** to configure routers and switches at scale using playbooks and J
 
 | Host | IP | OS | Role |
 |------|----|----|------|
-| router1 | 10.0.1.1 | IOS-XE | Core router / OSPF |
-| router2 | 10.0.1.2 | NX-OS | Secondary router |
-| switch1 | 10.0.1.10 | IOS | Access switch / VLANs |
+| router1 | 10.106.106.61 | IOS-XE | Core router / OSPF |
+| router2 | 10.106.106.62 | NX-OS | Secondary router |
+| switch1 | 10.106.106.63 | IOS | Access switch / VLANs |
 
 ---
 
@@ -107,7 +107,7 @@ Variables are centralised in `inventory/group_vars/all.yml` — edit once, appli
 domain_name:     lab.example.com
 dns_servers:     [8.8.8.8, 8.8.4.4]
 ntp_servers:     [216.239.35.0, 216.239.35.4]
-syslog_server:   10.0.0.50
+syslog_server:   10.106.106.60
 logging_buffer_size: 16384
 logging_severity: informational
 banner_motd: |

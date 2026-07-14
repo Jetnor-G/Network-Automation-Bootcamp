@@ -12,7 +12,7 @@ ntp_servers:
   - 216.239.35.0
   - 216.239.35.4
 
-syslog_server: 10.0.0.50
+syslog_server: 10.106.106.60
 logging_buffer_size: 16384
 logging_severity: informational
 

@@ -21,38 +21,43 @@
                  CLASSROOM MANAGEMENT NETWORK  10.0.0.0/24
 ══════════════════════════════════╪═══════════════════════════════════════
                                   │
-          ┌───────────────────────┼─────────────────────┐
-          │                       │                     │
-  ┌───────┴────────┐     ┌────────┴───────┐   ┌─────────┴──────┐
-  │ CONTROL NODE   │     │    NETBOX      │   │  GIT SERVER    │
-  │ 10.0.0.50      │     │ 10.0.0.100    │   │  10.0.0.60     │
-  │                │     │ Port: 8000     │   │  (Gitea)       │
-  │ • Git client   │     │                │   │                │
-  │ • Ansible      │     │ • IPAM / DCIM  │   │ • Shared repo  │
-  │ • Python 3     │     │ • Device reg.  │   │ • Student repos│
-  │ • VS Code      │     │ • API source   │   │ • Webhooks     │
-  │ • SSH access   │     │ • Dynamic inv. │   │                │
-  └───────┬────────┘     └────────┬───────┘   └────────────────┘
-          │                       │
-          │   SSH / RESTCONF / Ansible / REST API
-          │                       │
-══════════╪═══════════════════════╪═══════════════════════════════════════
-                 DEVICE NETWORK  10.0.1.0/24
-══════════╪═══════════════════════╪═══════════════════════════════════════
-          │                       │
-          └──────────┬────────────┘
-                     │
-        ┌────────────┼────────────────┐
-        │            │                │
-  ┌─────┴──────┐ ┌───┴────────┐  ┌───┴────────┐
-  │  ROUTER-1  │ │  ROUTER-2  │  │  SWITCH-1  │
-  │ 10.0.1.1   │ │ 10.0.1.2   │  │ 10.0.1.10  │
-  │            │ │            │  │            │
-  │ IOS-XE     │ │ NX-OS      │  │ IOS        │
-  │ OSPF Ar. 0 │ │            │  │ VLAN 10/20 │
-  │ RESTCONF   │ │            │  │ Mgmt VLAN  │
-  │ SSH        │ │ SSH        │  │ SSH        │
-  └────────────┘ └────────────┘  └────────────┘
+                          ┌───────┴────────┐        ┌────────────────┐
+                          │  GIT SERVER    │        │    NETBOX      │
+                          │  10.0.0.60     │        │ 10.100.100.25  │
+                          │  (Gitea)       │        │ Port: 8000     │
+                          │ • Shared repo  │        │ • IPAM / DCIM  │
+                          │ • Student repos│        │ • Device reg.  │
+                          │ • Webhooks     │        │ • API source   │
+                          └───────┬────────┘        │ • Dynamic inv. │
+                                  │                  └───────┬────────┘
+                                  │                          │
+══════════════════════════════════╪══════════════════════════╪══════════
+          AUTOMATION & DEVICE NETWORK  10.106.106.0/24
+══════════════════════════════════╪══════════════════════════╪══════════
+                                  │                          │
+                          ┌───────┴────────┐                 │
+                          │ CONTROL NODE   │◄─── REST API ────┘
+                          │ 10.106.106.60  │
+                          │ • Git client   │
+                          │ • Ansible      │
+                          │ • Python 3     │
+                          │ • VS Code      │
+                          │ • SSH access   │
+                          └───────┬────────┘
+                                  │
+                                  │   SSH / RESTCONF / Ansible
+                                  │
+        ┌────────────────────────┼────────────────┐
+        │                        │                │
+  ┌─────┴──────────┐ ┌───────────┴────┐  ┌────────┴───────┐
+  │  ROUTER-1      │ │  ROUTER-2      │  │  SWITCH-1      │
+  │ 10.106.106.61  │ │ 10.106.106.62  │  │ 10.106.106.63  │
+  │                │ │                │  │                │
+  │ IOS-XE         │ │ NX-OS          │  │ IOS            │
+  │ OSPF Ar. 0     │ │                │  │ VLAN 10/20     │
+  │ RESTCONF       │ │                │  │ Mgmt VLAN      │
+  │ SSH            │ │ SSH            │  │ SSH            │
+  └────────────────┘ └────────────────┘  └────────────────┘
 
 ══════════════════════════════════════════════════════════════════════════
                  STUDENT PODS  10.0.0.101 – 10.0.0.112
@@ -76,12 +81,12 @@
 
 | Device / Host | IP Address | Subnet | Role |
 |---------------|-----------|--------|------|
-| Control Node | 10.0.0.50 | /24 | Automation engine (shared) |
-| NetBox | 10.0.0.100 | /24 | IPAM / DCIM + API |
+| Control Node | 10.106.106.60 | /24 | Automation engine (shared) |
+| NetBox | 10.100.100.25 | /24 | IPAM / DCIM + API |
 | Gitea (Git Server) | 10.0.0.60 | /24 | Repository server |
-| Router-1 | 10.0.1.1 | /24 | IOS-XE lab router |
-| Router-2 | 10.0.1.2 | /24 | NX-OS lab router |
-| Switch-1 | 10.0.1.10 | /24 | IOS access switch |
+| Router-1 | 10.106.106.61 | /24 | IOS-XE lab router |
+| Router-2 | 10.106.106.62 | /24 | NX-OS lab router |
+| Switch-1 | 10.106.106.63 | /24 | IOS access switch |
 | Student Pod 01–12 | 10.0.0.101–112 | /24 | Student workstations |
 
 ---

@@ -14,7 +14,7 @@ from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticati
 DOMAIN_NAME      = "lab.example.com"
 DNS_SERVERS      = ["8.8.8.8", "8.8.4.4"]
 NTP_SERVERS      = ["216.239.35.0", "216.239.35.4"]
-SYSLOG_SERVER    = "10.0.0.50"
+SYSLOG_SERVER    = "10.106.106.60"
 LOG_BUFFER_SIZE  = 16384
 LOG_SEVERITY     = "informational"
 BANNER_TEXT      = (
@@ -27,9 +27,9 @@ BANNER_TEXT      = (
 
 # ── Devices ───────────────────────────────────────────────────────────────────
 DEVICES = [
-    {"device_type": "cisco_ios",  "host": "10.0.1.1",  "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
-    {"device_type": "cisco_ios",  "host": "10.0.1.2",  "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
-    {"device_type": "cisco_ios",  "host": "10.0.1.10", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
+    {"device_type": "cisco_ios",  "host": "10.106.106.61", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
+    {"device_type": "cisco_ios",  "host": "10.106.106.62", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
+    {"device_type": "cisco_ios",  "host": "10.106.106.63", "username": "admin", "password": "Lab@1234", "secret": "Lab@1234"},
 ]
 
 
