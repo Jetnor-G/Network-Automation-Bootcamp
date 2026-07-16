@@ -97,7 +97,7 @@ for obj in [
     "Track and roll back network configs using Git branches and merge requests.",
     "Write Ansible playbooks to configure routers and a switch at scale with Jinja2 templates.",
     "Consume the NetBox REST API to query and update the source of truth.",
-    "Query free public APIs (BGPView, PeeringDB, Cisco DevNet sandbox) to explore real BGP data.",
+    "Query free public APIs (ipctl.io, PeeringDB, ipinfo.io) to explore real BGP and IP data.",
     "Connect all three tools into a repeatable, auditable end-to-end change pipeline.",
 ]:
     bullet(obj)
@@ -151,8 +151,8 @@ code(
 "            FREE PUBLIC APIs (no account needed)\n"
 "          ───────────────────┼──────────────────────\n"
 "          │                  │                      │\n"
-"  Cisco DevNet IOS-XE   BGPView API          PeeringDB\n"
-"  (sandbox free)         (free)               (free)\n"
+"      ipinfo.io         ipctl.io API         PeeringDB\n"
+"       (free)             (free)               (free)\n"
 "          │                  │                      │\n"
 "          └──────────────────┼──────────────────────┘\n"
 "                             │ HTTPS\n"
@@ -203,9 +203,8 @@ heading("2.2 Free Public API Reference", 2, (0x2E, 0x74, 0xB5))
 table(
     ["Service", "Base URL", "Auth", "Best For"],
     [
-        ["Cisco DevNet IOS-XE", "sandbox-iosxe-latest-1.cisco.com", "devnetuser/Cisco123!", "RESTCONF on real IOS-XE"],
         ["NetBox Demo",         "demo.netbox.dev/api/",              "Public demo token",   "IPAM API queries"],
-        ["BGPView",             "api.bgpview.io",                    "None",                "ASN, prefix, BGP data"],
+        ["ipctl.io",            "api.ipctl.io/v1",                   "None (core routes)",  "ASN, prefix, BGP, RPKI data"],
         ["PeeringDB",           "peeringdb.com/api/",                "None (read)",         "IX and peering records"],
         ["ipinfo.io",           "ipinfo.io",                         "None (50 k/mo)",      "IP geolocation & ASN"],
         ["httpbin.org",         "httpbin.org",                       "None",                "HTTP method practice"],
@@ -359,7 +358,7 @@ doc.add_paragraph(
     "Students then extend the script to POST a new device via the API."
 )
 code(
-"NETBOX_URL   = 'http://10.100.100.25:8000'\n"
+"NETBOX_URL   = 'https://10.100.100.25'\n"
 "NETBOX_TOKEN = 'your_token_here'\n"
 "\n"
 "headers = {'Authorization': f'Token {NETBOX_TOKEN}'}\n"
@@ -367,42 +366,68 @@ code(
 "devices = resp.json()['results']"
 )
 
-heading("5.2 Script 2 — RESTCONF: Push Interface Config", 2, (0x2E, 0x74, 0xB5))
+heading("5.2 Script 2 — NetBox: Parsing API Output", 2, (0x2E, 0x74, 0xB5))
 doc.add_paragraph(
-    "Uses RESTCONF (RFC 8040) and HTTP PUT to configure GigabitEthernet0/1 on Router-1 "
-    "with a description and IP address using the ietf-interfaces YANG model."
+    "Pages through every device instead of one page, then runs the results through several "
+    "parsing patterns: grouping by site, counting by status, filtering to devices missing a "
+    "primary IP, filtering by role, and flattening to a name-to-IP map. The deepest example "
+    "reaches into each device's custom_fields to build a software lifecycle report — comparing "
+    "the running version against the vendor-recommended one and flagging devices past their "
+    "end-of-support date."
+)
+code(
+"# Follow pagination until NetBox stops returning a 'next' URL\n"
+"devices = []\n"
+"url = f'{NETBOX_URL}/api/dcim/devices/?limit=50'\n"
+"while url:\n"
+"    body = requests.get(url, headers=headers, verify=False).json()\n"
+"    devices.extend(body['results'])\n"
+"    url = body['next']"
 )
 
-heading("5.3 Script 3 — BGPView: Real Routing Data (Free, No Auth)", 2, (0x2E, 0x74, 0xB5))
+heading("5.3 Script 3 — NetBox: Create a Network Device", 2, (0x2E, 0x74, 0xB5))
 doc.add_paragraph(
-    "Queries the BGPView public API to look up ASN information and IPv4 prefixes. "
+    "POSTs a new device to NetBox — but first resolves the site, device role, and device type "
+    "names to the numeric IDs NetBox actually requires, via filtered GET calls. Also checks "
+    "whether the device already exists (via GET) before creating it, since NetBox does not "
+    "enforce unique device names server-side — a duplicate POST would otherwise silently "
+    "create a second device with the same name."
+)
+code(
+"role_id = lookup_id('dcim/device-roles', name='Network Device')\n"
+"site_id = lookup_id('dcim/sites', name='Arena Stadium')\n"
+"\n"
+"payload = {'name': 'Switch-2', 'role': role_id, 'site': site_id, ...}\n"
+"resp = requests.post(f'{NETBOX_URL}/api/dcim/devices/', headers=headers, json=payload)"
+)
+
+heading("5.4 Script 4 — SSH: Push Baseline Config with Netmiko", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph(
+    "Connects to all three lab devices over SSH using Netmiko and pushes banner, logging, "
+    "domain, DNS, and NTP settings — the one method that works against every device in this "
+    "lab, since none of them expose a working RESTCONF or NETCONF API (confirmed by testing "
+    "directly against the hardware), and Cisco's DevNet Always-On IOS-XE sandbox — previously "
+    "used here as a working RESTCONF example — is offline for a full platform rebuild, with "
+    "Cisco targeting early 2027 for it to return."
+)
+
+heading("5.5 Script 5 — ipctl.io: Real Routing Data (Free, No Auth)", 2, (0x2E, 0x74, 0xB5))
+doc.add_paragraph(
+    "Queries the ipctl.io public API to look up ASN information and IPv4 prefixes — a "
+    "maintained replacement for BGPView, which shut down permanently on 2025-11-26. "
     "Students use Cloudflare (AS13335) as a starting point, then look up their own ISP."
 )
 code(
 "# Look up Cloudflare (no auth required)\n"
-"resp = requests.get('https://api.bgpview.io/asn/13335')\n"
-"data = resp.json()['data']\n"
+"resp = requests.get('https://api.ipctl.io/v1/asn/13335')\n"
+"data = resp.json()['data']['asn']\n"
 "print(data['name'], data['country_code'])\n"
 "\n"
-"# List their prefixes\n"
-"resp = requests.get('https://api.bgpview.io/asn/13335/prefixes')\n"
-"prefixes = resp.json()['data']['ipv4_prefixes']"
+"# Same endpoint also returns the ASN's announced prefixes\n"
+"prefixes = resp.json()['data']['prefixes']"
 )
 
-heading("5.4 Script 4 — Cisco DevNet Always-On Sandbox (Free)", 2, (0x2E, 0x74, 0xB5))
-doc.add_paragraph(
-    "Connects to Cisco's free, always-on IOS-XE sandbox using RESTCONF. No sign-up required. "
-    "Students query interfaces, then compare the YANG model output to show ip interface brief."
-)
-code(
-"SANDBOX = 'sandbox-iosxe-latest-1.cisco.com'\n"
-"auth    = HTTPBasicAuth('devnetuser', 'Cisco123!')\n"
-"url     = f'https://{SANDBOX}/restconf/data/ietf-interfaces:interfaces'\n"
-"resp    = requests.get(url, auth=auth, headers=HEADERS, verify=False)\n"
-"interfaces = resp.json()['ietf-interfaces:interfaces']['interface']"
-)
-
-heading("5.5 Other Free APIs to Explore", 2, (0x2E, 0x74, 0xB5))
+heading("5.6 Other Free APIs to Explore", 2, (0x2E, 0x74, 0xB5))
 table(
     ["API", "Example Call", "Returns"],
     [
@@ -455,9 +480,10 @@ table(
         ["Ansible", "compliance-check generates a report",                      "☐"],
         ["Ansible", "--check --diff used before every real push",               "☐"],
         ["API",     "Script 1 queries NetBox and adds a device via POST",       "☐"],
-        ["API",     "Script 2 applies interface config via RESTCONF PUT",       "☐"],
-        ["API",     "Script 3 looks up an ASN and parses BGP prefixes",        "☐"],
-        ["API",     "Script 4 queries Cisco DevNet sandbox interfaces",         "☐"],
+        ["API",     "Script 2 pages through NetBox devices and summarizes them", "☐"],
+        ["API",     "Script 3 resolves IDs and creates a device in NetBox",     "☐"],
+        ["API",     "Script 4 pushes baseline config to all devices via SSH",   "☐"],
+        ["API",     "Script 5 looks up an ASN and parses BGP prefixes",         "☐"],
         ["Pipeline","Full CR-to-deploy pipeline demonstrated end-to-end",       "☐"],
     ],
     [1.2, 4.2, 0.8]

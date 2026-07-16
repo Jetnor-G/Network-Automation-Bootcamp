@@ -1,0 +1,369 @@
+{
+  "info": {
+    "_postman_id": "8f2a1c9e-6b3d-4e7a-9c1f-3d5a7b9e2f4c",
+    "name": "Network Automation Bootcamp — Section 3 APIs",
+    "description": "Companion Postman collection for the Section-3-API scripts. Covers the same requests scripts 01–03 (NetBox) and 05 (ipctl.io) make, so you can explore/tweak them interactively before or instead of running Python.\n\nScript 04 (SSH/Netmiko) isn't included — Postman only speaks HTTP, and that script talks CLI over SSH.\n\n**Before you run anything:** NetBox uses a self-signed HTTPS certificate. In Postman, go to Settings → General → turn OFF \"SSL certificate verification\", or every NetBox request will fail with a certificate error.\n\n**Run order for the \"03 - NetBox: Create Device\" folder:** run its requests top-to-bottom (or use the folder's \"Run\" button in the Collection Runner). Steps 1–3 look up numeric IDs and save them into collection variables (role_id, site_id, device_type_id); step 5's create request depends on those being set first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "NetBox (Scripts 01–03)",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          { "key": "key", "value": "Authorization", "type": "string" },
+          { "key": "value", "value": "Token {{netbox_token}}", "type": "string" },
+          { "key": "in", "value": "header", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "01 - Get Active Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/devices/?status=active&limit=50",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "devices", "" ],
+              "query": [
+                { "key": "status", "value": "active" },
+                { "key": "limit", "value": "50" }
+              ]
+            },
+            "description": "Matches 01_netbox_get_devices.py's get_devices(). Returns one page (up to 50) of active devices."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Get All Devices (page 1)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/devices/?limit=50",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "devices", "" ],
+              "query": [
+                { "key": "limit", "value": "50" }
+              ]
+            },
+            "description": "Matches 02_netbox_parse_output.py's get_all_devices() — but only one page. Check the \"next\" field in the response body: if it's not null, that URL is the next page. The Python script loops this until \"next\" is null; here you'd paste that URL into a new request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "console.log(\"count:\", body.count, \"| next page:\", body.next);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "02 - Get Device Roles",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/device-roles/?limit=50",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "device-roles", "" ],
+              "query": [ { "key": "limit", "value": "50" } ]
+            },
+            "description": "All device roles configured in this NetBox instance. Note the field is called \"role\" on the device object itself, but the endpoint/model is still \"device-roles\"."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Get Sites",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/sites/?limit=50",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "sites", "" ],
+              "query": [ { "key": "limit", "value": "50" } ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Get Device Types",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/device-types/?limit=50",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "device-types", "" ],
+              "query": [ { "key": "limit", "value": "50" } ]
+            },
+            "description": "Device types are matched by \"model\", not \"name\" — see the ?model= filter used in the create-device folder."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Step 1: Lookup Role ID",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/device-roles/?name={{device_role_name}}",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "device-roles", "" ],
+              "query": [ { "key": "name", "value": "{{device_role_name}}" } ]
+            },
+            "description": "Matches 03_netbox_create_device.py's lookup_id(\"dcim/device-roles\", name=...). Saves the resolved id into the {{role_id}} collection variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Role found\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.count, \"No device-role named '\" + pm.collectionVariables.get(\"device_role_name\") + \"' — create it in NetBox first, or change device_role_name.\").to.be.above(0);",
+                  "    pm.collectionVariables.set(\"role_id\", body.results[0].id);",
+                  "    console.log(\"role_id =\", body.results[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Step 2: Lookup Site ID",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/sites/?name={{site_name}}",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "sites", "" ],
+              "query": [ { "key": "name", "value": "{{site_name}}" } ]
+            },
+            "description": "Matches lookup_id(\"dcim/sites\", name=...). Saves the resolved id into {{site_id}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Site found\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.count, \"No site named '\" + pm.collectionVariables.get(\"site_name\") + \"' — check the name or change site_name.\").to.be.above(0);",
+                  "    pm.collectionVariables.set(\"site_id\", body.results[0].id);",
+                  "    console.log(\"site_id =\", body.results[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Step 3: Lookup Device Type ID",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/device-types/?model={{device_type_model}}",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "device-types", "" ],
+              "query": [ { "key": "model", "value": "{{device_type_model}}" } ]
+            },
+            "description": "Matches lookup_id(\"dcim/device-types\", model=...) — note this endpoint filters by \"model\", not \"name\". Saves the resolved id into {{device_type_id}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Device type found\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.count, \"No device-type modeled '\" + pm.collectionVariables.get(\"device_type_model\") + \"' — check the model or change device_type_model.\").to.be.above(0);",
+                  "    pm.collectionVariables.set(\"device_type_id\", body.results[0].id);",
+                  "    console.log(\"device_type_id =\", body.results[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Step 4: Check Device Exists",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/devices/?name={{new_device_name}}",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "devices", "" ],
+              "query": [ { "key": "name", "value": "{{new_device_name}}" } ]
+            },
+            "description": "Matches 03_netbox_create_device.py's device_exists() pre-check. This NetBox instance does NOT enforce unique device names server-side, so this client-side check is the only reliable way to avoid creating duplicates."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.count > 0) {",
+                  "    console.warn(\"'\" + pm.collectionVariables.get(\"new_device_name\") + \"' already exists (id \" + body.results[0].id + \") — the create step below will add a DUPLICATE, since this NetBox doesn't block that. Change new_device_name if you don't want a duplicate.\");",
+                  "} else {",
+                  "    console.log(\"'\" + pm.collectionVariables.get(\"new_device_name\") + \"' does not exist yet — safe to create.\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Step 5: Create Device (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{new_device_name}}\",\n  \"role\": {{role_id}},\n  \"site\": {{site_id}},\n  \"device_type\": {{device_type_id}},\n  \"status\": \"planned\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{netbox_url}}/api/dcim/devices/",
+              "host": [ "{{netbox_url}}" ],
+              "path": [ "api", "dcim", "devices", "" ]
+            },
+            "description": "Matches 03_netbox_create_device.py's create_device(). Requires role_id/site_id/device_type_id to already be set (run steps 1–3 first). Note the payload field is \"role\", not the older \"device_role\" name."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fail fast with a clear message instead of sending a request with a",
+                  "// blank value in it (which NetBox rejects as a confusing JSON parse error).",
+                  "const required = [\"role_id\", \"site_id\", \"device_type_id\"];",
+                  "const missing = required.filter((k) => !pm.collectionVariables.get(k));",
+                  "if (missing.length > 0) {",
+                  "    throw new Error(",
+                  "        \"Missing collection variable(s): \" + missing.join(\", \") + \". \" +",
+                  "        \"Run '03 - Step 1: Lookup Role ID', 'Step 2: Lookup Site ID', and \" +",
+                  "        \"'Step 3: Lookup Device Type ID' first (each one saves its ID into a \" +",
+                  "        \"collection variable) — or use this folder's 'Run' button to execute \" +",
+                  "        \"every request top to bottom automatically.\"",
+                  "    );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Device created (201)\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    console.log(\"Created device id:\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ipctl.io (Script 05)",
+      "item": [
+        {
+          "name": "Lookup ASN",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "https://api.ipctl.io/v1/asn/{{asn}}",
+              "protocol": "https",
+              "host": [ "api", "ipctl", "io" ],
+              "path": [ "v1", "asn", "{{asn}}" ]
+            },
+            "description": "Matches lookup_asn()/lookup_prefixes() in 05_ipctl_lookup.py — returns ASN info AND its full prefix list in one response. No API key needed for this route (only the separate /as/{asn} route requires one)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup IP",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "https://api.ipctl.io/v1/ip/{{ip}}",
+              "protocol": "https",
+              "host": [ "api", "ipctl", "io" ],
+              "path": [ "v1", "ip", "{{ip}}" ]
+            },
+            "description": "Matches lookup_ip() in 05_ipctl_lookup.py."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup Prefix",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json" } ],
+            "url": {
+              "raw": "https://api.ipctl.io/v1/prefix/{{prefix}}",
+              "protocol": "https",
+              "host": [ "api", "ipctl", "io" ],
+              "path": [ "v1", "prefix", "{{prefix}}" ]
+            },
+            "description": "Not used directly by the script (which gets prefix data via the ASN lookup instead), but useful for exploring a single prefix's BGP/RPKI/geo detail."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "netbox_url", "value": "https://10.100.100.25", "type": "string" },
+    { "key": "netbox_token", "value": "aHMRkoDJCWgsfTvodfpaV3GXFcMABlWeTOVrCbeg", "type": "string" },
+    { "key": "device_role_name", "value": "Network Device", "type": "string" },
+    { "key": "site_name", "value": "Arena Stadium", "type": "string" },
+    { "key": "device_type_model", "value": "C9200-48P", "type": "string" },
+    { "key": "new_device_name", "value": "Postman-Test-Switch", "type": "string" },
+    { "key": "role_id", "value": "", "type": "string" },
+    { "key": "site_id", "value": "", "type": "string" },
+    { "key": "device_type_id", "value": "", "type": "string" },
+    { "key": "asn", "value": "13335", "type": "string" },
+    { "key": "ip", "value": "1.1.1.1", "type": "string" },
+    { "key": "prefix", "value": "1.1.1.0/24", "type": "string" }
+  ]
+}

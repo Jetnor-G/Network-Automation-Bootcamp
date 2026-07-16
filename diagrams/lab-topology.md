@@ -10,9 +10,9 @@
                  ─────────────────┼──────────────────────
                  │                │                      │
         ┌────────┴──────┐ ┌───────┴──────┐  ┌───────────┴────────┐
-        │ Cisco DevNet  │ │  BGPView API │  │   PeeringDB API    │
-        │ Always-On     │ │ api.bgpview  │  │ peeringdb.com/api/ │
-        │ IOS-XE (free) │ │  .io (free)  │  │      (free)        │
+        │  ipinfo.io    │ │  ipctl.io API│  │   PeeringDB API    │
+        │  (free)       │ │ api.ipctl.io │  │ peeringdb.com/api/ │
+        │               │ │  /v1 (free)  │  │      (free)        │
         └───────────────┘ └──────────────┘  └────────────────────┘
                  │                │                      │
                  └────────────────┼──────────────────────┘
@@ -24,7 +24,7 @@
                           ┌───────┴────────┐        ┌────────────────┐
                           │  GIT SERVER    │        │    NETBOX      │
                           │  10.0.0.60     │        │ 10.100.100.25  │
-                          │  (Gitea)       │        │ Port: 8000     │
+                          │  (Gitea)       │        │ HTTPS (443)    │
                           │ • Shared repo  │        │ • IPAM / DCIM  │
                           │ • Student repos│        │ • Device reg.  │
                           │ • Webhooks     │        │ • API source   │
@@ -45,7 +45,7 @@
                           │ • SSH access   │
                           └───────┬────────┘
                                   │
-                                  │   SSH / RESTCONF / Ansible
+                                  │   SSH / Ansible
                                   │
         ┌────────────────────────┼────────────────┐
         │                        │                │
@@ -53,9 +53,9 @@
   │  ROUTER-1      │ │  ROUTER-2      │  │  SWITCH-1      │
   │ 10.106.106.61  │ │ 10.106.106.62  │  │ 10.106.106.63  │
   │                │ │                │  │                │
-  │ IOS-XE         │ │ NX-OS          │  │ IOS            │
+  │ NX-OS          │ │ NX-OS          │  │ IOS            │
   │ OSPF Ar. 0     │ │                │  │ VLAN 10/20     │
-  │ RESTCONF       │ │                │  │ Mgmt VLAN      │
+  │                │ │                │  │ Mgmt VLAN      │
   │ SSH            │ │ SSH            │  │ SSH            │
   └────────────────┘ └────────────────┘  └────────────────┘
 
@@ -84,7 +84,7 @@
 | Control Node | 10.106.106.60 | /24 | Automation engine (shared) |
 | NetBox | 10.100.100.25 | /24 | IPAM / DCIM + API |
 | Gitea (Git Server) | 10.0.0.60 | /24 | Repository server |
-| Router-1 | 10.106.106.61 | /24 | IOS-XE lab router |
+| Router-1 | 10.106.106.61 | /24 | NX-OS lab router |
 | Router-2 | 10.106.106.62 | /24 | NX-OS lab router |
 | Switch-1 | 10.106.106.63 | /24 | IOS access switch |
 | Student Pod 01–12 | 10.0.0.101–112 | /24 | Student workstations |
@@ -95,9 +95,8 @@
 
 | API | Base URL | Auth | Rate Limit | Best For |
 |-----|----------|------|-----------|---------|
-| Cisco DevNet IOS-XE | `sandbox-iosxe-latest-1.cisco.com` | Basic (devnetuser/Cisco123!) | None | RESTCONF practice |
 | NetBox Demo | `https://demo.netbox.dev/api/` | Token (public demo token) | Fair use | IPAM API queries |
-| BGPView | `https://api.bgpview.io/` | None | ~45 req/min | BGP / ASN lookups |
+| ipctl.io | `https://api.ipctl.io/v1/` | None (`/asn`,`/ip`,`/prefix`) | 1,000 req/day | BGP / ASN / RPKI lookups |
 | PeeringDB | `https://www.peeringdb.com/api/` | None (read) | Fair use | IX / peering data |
 | ipinfo.io | `https://ipinfo.io/` | None (limited) | 50k/mo | IP geolocation & ASN |
 | httpbin.org | `https://httpbin.org/` | None | None | HTTP method practice |
@@ -109,8 +108,7 @@
 | Protocol | Port | Used Between |
 |----------|------|-------------|
 | SSH | 22 | Control Node → Devices |
-| RESTCONF | 443 | Control Node → Router-1 |
-| HTTP | 8000 | Students → NetBox |
+| HTTPS | 443 | Students → NetBox |
 | HTTP | 3000 | Students → Gitea |
 | HTTPS | 443 | Students → Public APIs |
 | OSPF | — | Router-1 ↔ Router-2 |
