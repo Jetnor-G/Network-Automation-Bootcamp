@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script 05 — Push baseline config via SSH using Netmiko.
+Script 04 — Push baseline config via SSH using Netmiko.
 Configures: Banner MOTD, Logging, Domain, DNS, NTP
 on all devices defined in DEVICES.
 
@@ -8,10 +8,14 @@ Router-1 / Router-2 are virtual Nexus (NX-OS, no enable needed).
 Switch-1 is virtual IOS (needs enable). Command syntax differs per
 platform, so commands are built separately for each device_type.
 
-Usage: python3 05_push_baseline_ssh.py
+Usage: python3 04_push_baseline_ssh.py
 Requires: pip install netmiko
 """
 
+# Netmiko wraps a raw SSH session (via Paramiko) with per-vendor CLI
+# handling — it knows how to detect prompts, enter config mode, and send
+# commands correctly for each "device_type" without you writing any of
+# that logic by hand.
 from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
 
 # ── Baseline values ────────────────────────────────────────────────────────
@@ -31,6 +35,10 @@ BANNER_TEXT      = (
 )
 
 # ── Devices ───────────────────────────────────────────────────────────────────
+# Each dict is passed straight into Netmiko's ConnectHandler(**device) —
+# "device_type" selects the driver Netmiko uses to talk to that platform.
+# Only the IOS switch needs "secret" (the enable password); NX-OS logs
+# straight into full EXEC mode, so there's nothing to escalate to.
 DEVICES = [
     {"device_type": "cisco_nxos", "host": "10.106.106.61", "username": "admin", "password": "Lab@1234"},
     {"device_type": "cisco_nxos", "host": "10.106.106.62", "username": "admin", "password": "Lab@1234"},
@@ -99,17 +107,24 @@ def push_to_device(device):
     device_type = device["device_type"]
     print(f"\n[*] Connecting to {host} ({device_type}) ...")
     try:
-        conn = ConnectHandler(**device)
+        conn = ConnectHandler(**device)  # opens the SSH session and logs in
         if device_type == "cisco_ios":
-            conn.enable()
+            conn.enable()   # escalate to privileged EXEC — only IOS needs this
 
         commands = build_config_commands(device_type)
+        # send_config_set() enters config mode, sends each command in
+        # order, then exits config mode — cmd_verify=False skips Netmiko's
+        # per-command echo check, which speeds things up for long lists.
         output   = conn.send_config_set(commands, cmd_verify=False)
+        # save_config() runs the correct "save to startup" command for
+        # this device_type automatically (Netmiko knows IOS uses
+        # "write memory" and NX-OS uses "copy running-config startup-config").
         conn.save_config()
 
         print(f"[+] {host} — config applied and saved.")
 
-        # Verify key items
+        # Verify key items — send_command() runs a single show command
+        # and returns its plain-text output for us to parse/print.
         ntp_cmd = "show ntp associations" if device_type == "cisco_ios" else "show ntp peer-status"
         ntp_out = conn.send_command(ntp_cmd)
         log_out = conn.send_command("show logging")
@@ -118,6 +133,9 @@ def push_to_device(device):
 
         conn.disconnect()
 
+    # Catching these individually — instead of one bare "except Exception" —
+    # means one bad device (timeout, wrong password) can't crash the loop
+    # in main() and stop the script from reaching the rest of DEVICES.
     except NetmikoTimeoutException:
         print(f"[ERROR] {host} — connection timed out.")
     except NetmikoAuthenticationException:

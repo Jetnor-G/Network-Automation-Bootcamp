@@ -14,9 +14,8 @@ A hands-on lab for **10–12 students** learning network automation with **Git**
               ──────────────┼──────────────
                             │
               ┌─────────────┴──────────────────┐
-              │   Cisco DevNet Always-On (free) │
               │   demo.netbox.dev  (free)        │
-              │   bgpview API      (free)        │
+              │   ipctl.io API     (free)        │
               │   peeringdb API    (free)        │
               └─────────────┬──────────────────┘
                             │ HTTPS / REST
@@ -27,7 +26,7 @@ A hands-on lab for **10–12 students** learning network automation with **Git**
                      ┌──────┴──────────┐        ┌─────────────────┐
                      │  GIT SERVER     │        │     NETBOX      │
                      │  10.0.0.60      │        │  10.100.100.25  │
-                     │  (Gitea/GitHub) │        │  :8000          │
+                     │  (Gitea/GitHub) │        │  HTTPS (443)    │
                      │  • Shared repo  │        │  • IPAM/DCIM    │
                      │  • Student repos│        │  • Inventory    │
                      └──────┬──────────┘        │  • API source   │
@@ -46,7 +45,7 @@ A hands-on lab for **10–12 students** learning network automation with **Git**
                      │  • VS Code      │
                      └──────┬──────────┘
                             │
-                            │    SSH / RESTCONF / Ansible
+                            │    SSH / Ansible
                             │
         ┌───────────────────┼──────────────────┐
         │                   │                  │
@@ -81,9 +80,8 @@ A hands-on lab for **10–12 students** learning network automation with **Git**
 
 | Service | URL | What Students Explore |
 |---------|-----|-----------------------|
-| Cisco DevNet Always-On IOS-XE | `sandbox-iosxe-latest-1.cisco.com` | RESTCONF on a real IOS-XE device |
 | NetBox Demo | `https://demo.netbox.dev` | IPAM/DCIM REST API |
-| BGPView | `https://api.bgpview.io` | BGP routing data, prefix lookups |
+| ipctl.io | `https://api.ipctl.io/v1` | BGP routing data, prefix lookups, RPKI status |
 | PeeringDB | `https://www.peeringdb.com/api/` | Internet exchange and peering data |
 | ipinfo.io | `https://ipinfo.io` | IP geolocation & ASN info |
 | httpbin.org | `https://httpbin.org` | HTTP method practice (GET/POST/PUT) |
@@ -138,15 +136,20 @@ Network-Automation-Bootcamp/
 │   ├── playbooks/
 │   │   ├── 01-gather-facts.yml
 │   │   ├── 02-push-config.yml
-│   │   └── 03-compliance-check.yml
-│   └── templates/interface.j2
+│   │   ├── 03-compliance-check.yml
+│   │   └── 04-baseline-config.yml
+│   └── templates/
+│       ├── interface.j2
+│       └── baseline.j2
 └── Section-3-API/
     ├── README.md
+    ├── Network-Automation-Bootcamp.postman_collection.json
     ├── scripts/
     │   ├── 01_netbox_get_devices.py
-    │   ├── 02_restconf_push_config.py
-    │   ├── 03_bgpview_lookup.py
-    │   └── 04_devnet_sandbox.py
+    │   ├── 02_netbox_parse_output.py
+    │   ├── 03_netbox_create_device.py
+    │   ├── 04_push_baseline_ssh.py
+    │   └── 05_ipctl_lookup.py
     └── examples/
         └── sample_response.json
 ```
