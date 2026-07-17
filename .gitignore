@@ -1,4 +1,5 @@
 # Exclude all generated PowerPoint decks, their generator scripts, and LibreOffice lock files
 *.pptx
 generate_slides*.py
+generate_lab*.py
 .~lock.*#
