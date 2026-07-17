@@ -3,3 +3,7 @@
 generate_slides*.py
 generate_lab*.py
 .~lock.*#
+
+# Python bytecode cache — derived build artifacts, not source
+__pycache__/
+*.pyc
